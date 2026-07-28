@@ -24,8 +24,8 @@ async function sendSms(phone, message, options = {}) {
     const msisdn = phone.length === 10 ? `91${phone}` : phone;
     let url = `http://cloud.smsindiahub.in/vendorsms/pushsms.aspx?APIKey=${apiKey}&msisdn=${msisdn}&sid=${senderId}&msg=${encodeURIComponent(message)}&fl=0&gwid=2`;
     
-    if (options.peid) url += `&peid=${options.peid}&EntityID=${options.peid}`;
-    if (options.templateId) url += `&templateid=${options.templateId}&TemplateID=${options.templateId}`;
+    if (options.peid) url += `&peid=${options.peid}`;
+    if (options.templateId) url += `&templateid=${options.templateId}`;
     
     console.log(`[SMS SERVICE DEBUG] Request URL: ${url}`);
     
