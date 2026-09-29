@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { 
   Wrench, Plus, Trash2, CheckCircle2, Loader2, 
   ArrowLeft, ChevronDown, Search, FileText, Calendar, 
-  ArrowRight, X 
+  ArrowRight, X, Pencil
 } from 'lucide-react'
 import { useVehicles } from '../../context/VehicleContext'
 import { useBills } from '../../context/BillContext'
@@ -30,7 +30,7 @@ function Field({ label, error, children, required }) {
   )
 }
 
-const VCard = ({ v, onDelete, onViewHistory, getTranslatedText }) => (
+const VCard = ({ v, onDelete, onEdit, onViewHistory, getTranslatedText }) => (
   <div 
     onClick={() => onViewHistory(v)}
     style={{ 
@@ -61,8 +61,18 @@ const VCard = ({ v, onDelete, onViewHistory, getTranslatedText }) => (
       )}
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onDelete(v.id || v._id); }} 
+      <button
+        onClick={(e) => { e.stopPropagation(); onEdit(v); }}
+        title={getTranslatedText('Edit')}
+        style={{
+          width: 32, height: 32, border: 'none', background: '#F5F3FF',
+          borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}
+      >
+        <Pencil size={15} color="#7C3AED" />
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(v.id || v._id); }}
         style={{ 
           width: 32, height: 32, border: 'none', background: 'rgba(239, 68, 68, 0.05)', 
           borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', 
@@ -88,12 +98,14 @@ export default function GarageVehicles() {
     'Service History', 'No owner name', 'No service records found',
     'This vehicle hasn\'t been billed yet.', 'Job Card #', 'Draft', 'Current:', 'Next service:',
     'Car', 'SUV', 'Bike', 'Truck', 'Bus', 'Auto', 'Van', 'Other', 'Done',
-    'Maruti', 'Hyundai', 'Tata', 'Honda', 'Toyota', 'Mahindra', 'Ford', 'Kia', 'MG', 'Renault', 'Volkswagen', 'Skoda'
+    'Maruti', 'Hyundai', 'Tata', 'Honda', 'Toyota', 'Mahindra', 'Ford', 'Kia', 'MG', 'Renault', 'Volkswagen', 'Skoda',
+    'Edit', 'Edit Vehicle', 'Update Vehicle', 'Saving…'
   ])
-  const { vehicles, addVehicle, deleteVehicle } = useVehicles()
+  const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useVehicles()
   const { bills } = useBills()
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedVehicle, setSelectedVehicle] = useState(null)
 
@@ -101,10 +113,35 @@ export default function GarageVehicles() {
     defaultValues: { vehicleNumber: '', company: 'Maruti', model: '', vehicleType: 'Car', kmReading: '', nextServiceKm: '', customerName: '', customerPhone: '' }
   })
 
-  const onSubmit = async (data) => {
-    addVehicle({ ...data, garageVehicle: true })
-    reset()
+  const EMPTY_FORM = { vehicleNumber: '', company: 'Maruti', model: '', vehicleType: 'Car', kmReading: '', nextServiceKm: '', customerName: '', customerPhone: '' }
+
+  const closeForm = () => {
+    reset(EMPTY_FORM)
+    setEditingId(null)
     setShowForm(false)
+  }
+
+  const startEdit = (v) => {
+    reset({
+      vehicleNumber: v.vehicleNumber || '', company: v.company || '', model: v.model || '',
+      vehicleType: v.vehicleType || 'Car', kmReading: v.kmReading ?? '', nextServiceKm: v.nextServiceKm ?? '',
+      customerName: v.customerName || '', customerPhone: v.customerPhone || '',
+    })
+    setEditingId(v.id || v._id)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const onSubmit = async (data) => {
+    try {
+      const saved = editingId
+        ? await updateVehicle(editingId, data)
+        : await addVehicle({ ...data, garageVehicle: true })
+      if (!saved) throw new Error()
+      closeForm()
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to save vehicle. Please try again.')
+    }
   }
 
   const filteredVehicles = useMemo(() => {
@@ -145,7 +182,7 @@ export default function GarageVehicles() {
             <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0F0D2E', marginBottom: 4, letterSpacing: '-0.02em' }}>{getTranslatedText('Garage Fleet')}</h2>
             <p style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600 }}>{getTranslatedText('Manage party vehicles and tracking history')}</p>
           </div>
-          <button id="btn-add-garage-vehicle" className="btn btn-primary" onClick={() => setShowForm(s => !s)} style={{ borderRadius: 14, height: 44 }}>
+          <button id="btn-add-garage-vehicle" className="btn btn-primary" onClick={() => (showForm ? closeForm() : setShowForm(true))} style={{ borderRadius: 14, height: 44 }}>
             <Plus size={18} /> {getTranslatedText('Add Vehicle')}
           </button>
         </div>
@@ -171,7 +208,7 @@ export default function GarageVehicles() {
 
       {showForm && (
         <div className="animate-fadeInDown" style={{ background: 'white', borderRadius: 24, padding: '24px', marginBottom: 20, boxShadow: '0 8px 30px rgba(124,58,237,0.12)', border: '2px solid #EDE9FE' }}>
-          <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0F0D2E', marginBottom: 20 }}>{getTranslatedText('Register New Vehicle')}</h3>
+          <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0F0D2E', marginBottom: 20 }}>{editingId ? getTranslatedText('Edit Vehicle') : getTranslatedText('Register New Vehicle')}</h3>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="responsive-grid" style={{ gap: 16, marginBottom: 20 }}>
               <Field label={getTranslatedText('Vehicle Type')}>
@@ -234,9 +271,11 @@ export default function GarageVehicles() {
               </Field>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
-              <button type="button" className="btn btn-ghost" style={{ flex: 1, borderRadius: 12 }} onClick={() => setShowForm(false)}>{getTranslatedText('Cancel')}</button>
+              <button type="button" className="btn btn-ghost" style={{ flex: 1, borderRadius: 12 }} onClick={closeForm}>{getTranslatedText('Cancel')}</button>
               <button type="submit" className="btn btn-primary" style={{ flex: 2, borderRadius: 12 }} disabled={isSubmitting}>
-                {isSubmitting ? <><Loader2 size={18} className="spin" /> {getTranslatedText('Registering…')}</> : <><CheckCircle2 size={18} /> {getTranslatedText('Register Vehicle')}</>}
+                {isSubmitting
+                  ? <><Loader2 size={18} className="spin" /> {getTranslatedText(editingId ? 'Saving…' : 'Registering…')}</>
+                  : <><CheckCircle2 size={18} /> {getTranslatedText(editingId ? 'Update Vehicle' : 'Register Vehicle')}</>}
               </button>
             </div>
           </form>
@@ -254,7 +293,7 @@ export default function GarageVehicles() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-          {filteredVehicles.map(v => <VCard key={v.id || v._id} v={v} onDelete={deleteVehicle} onViewHistory={setSelectedVehicle} getTranslatedText={getTranslatedText} />)}
+          {filteredVehicles.map(v => <VCard key={v.id || v._id} v={v} onDelete={deleteVehicle} onEdit={startEdit} onViewHistory={setSelectedVehicle} getTranslatedText={getTranslatedText} />)}
         </div>
       )}
 

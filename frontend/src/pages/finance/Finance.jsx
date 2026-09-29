@@ -12,15 +12,15 @@ import {
 } from 'recharts'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 
-const TxCard = ({ tx, partyName, getTranslatedText }) => {
+const TxCard = ({ tx, partyName, getTranslatedText, onClick }) => {
   const isIncome = tx.type === 'income'
   const displayParty = partyName || 'N/A'
   const displayCategory = tx.category ? getTranslatedText(tx.category) : getTranslatedText('General')
   const subInfo = tx.bill ? `Bill Ref: ${tx.bill.slice(-6).toUpperCase()}` : ''
 
   return (
-    <div style={{
-      background: 'white', borderRadius: 16, padding: '14px 16px',
+    <div onClick={onClick} style={{
+      background: 'white', borderRadius: 16, padding: '14px 16px', cursor: 'pointer',
       boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 14,
       border: '1px solid rgba(0,0,0,0.03)', marginBottom: 10
     }}>
@@ -283,7 +283,9 @@ export default function Finance() {
             const party = parties.find(p => p._id === txPartyId || p.id === txPartyId)
             const partyName = (typeof tx.party === 'object') ? tx.party?.name : (party?.name || tx.category)
             
-            return <TxCard key={tx._id || tx.id} tx={tx} partyName={partyName} getTranslatedText={getTranslatedText} />
+            // Bill payments are managed on their bill; manual entries open in the editor
+            const openTx = () => tx.bill ? navigate(`/bills/${tx.bill}`) : navigate(`/finance/add?edit=${tx._id || tx.id}`)
+            return <TxCard key={tx._id || tx.id} tx={tx} partyName={partyName} getTranslatedText={getTranslatedText} onClick={openTx} />
           })}
         </div>
       )}

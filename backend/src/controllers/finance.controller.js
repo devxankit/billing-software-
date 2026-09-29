@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Transaction = require("../models/Transaction");
 const Party = require("../models/Party");
+const { recalcPartyBalance } = require("../utils/partyBalance");
 
 async function listTransactions(req, res, next) {
   try {
@@ -66,50 +67,93 @@ async function getFinanceStats(req, res, next) {
   }
 }
 
-async function addTransaction(req, res, next) {
-  try {
-    const body = req.body || {};
-    const amount = parseFloat(body.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "Amount must be greater than 0" });
-    }
-    if (!["income", "expense"].includes(body.type)) {
-      return res.status(400).json({ success: false, message: "Type must be income or expense" });
-    }
+// Validate a manual entry and return only the fields a client may set
+async function manualEntryFields(body, ownerId) {
+  const amount = parseFloat(body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Amount must be greater than 0" };
+  if (!["income", "expense"].includes(body.type)) return { error: "Type must be income or expense" };
 
-    // A linked party must belong to this user
-    let partyId = null;
-    if (body.party) {
-      if (!mongoose.Types.ObjectId.isValid(body.party)) {
-        return res.status(400).json({ success: false, message: "Invalid party" });
-      }
-      const owned = await Party.exists({ _id: body.party, owner: req.user.id });
-      if (!owned) return res.status(404).json({ success: false, message: "Party not found" });
-      partyId = body.party;
-    }
+  // A linked party must belong to this user
+  let partyId = null;
+  if (body.party) {
+    const rawParty = String(body.party._id || body.party);
+    if (!mongoose.Types.ObjectId.isValid(rawParty)) return { error: "Invalid party" };
+    const owned = await Party.exists({ _id: rawParty, owner: ownerId });
+    if (!owned) return { error: "Party not found", status: 404 };
+    partyId = rawParty;
+  }
 
-    // Only schema fields — never owner or other server-controlled values from the client
-    const data = {
-      owner: req.user.id,
+  return {
+    fields: {
       type: body.type,
-      amount,
+      amount: Math.round(amount * 100) / 100,
       party: partyId,
-      bill: mongoose.Types.ObjectId.isValid(body.bill) ? body.bill : null,
       category: body.category || undefined,
       paymentMode: body.paymentMode || undefined,
       date: body.date || undefined,
       description: body.description ?? body.notes ?? null,
       reference: body.reference ?? null,
-    };
-    const tx = await Transaction.create(data);
+    },
+  };
+}
 
-    // Update party balance if linked
-    if (partyId) {
-      const adjustment = data.type === 'income' ? -amount : amount;
-      await Party.updateOne({ _id: partyId, owner: req.user.id }, { $inc: { balance: adjustment } });
-    }
+async function addTransaction(req, res, next) {
+  try {
+    const { error, status, fields } = await manualEntryFields(req.body || {}, req.user.id);
+    if (error) return res.status(status || 400).json({ success: false, message: error });
+
+    // Bill payments go through POST /bills/:id/payments, so manual entries are never linked to a bill
+    const tx = await Transaction.create({ ...fields, owner: req.user.id, bill: null });
+    await recalcPartyBalance(req.user.id, tx.party);
 
     return res.json({ success: true, transaction: tx });
+  } catch (e) {
+    next(e);
+  }
+}
+
+// Only manual entries can be changed here — payment entries belong to their bill
+async function findManualEntry(id, ownerId) {
+  if (!mongoose.Types.ObjectId.isValid(id)) return { status: 404, error: "Entry not found" };
+  const tx = await Transaction.findOne({ _id: id, owner: ownerId });
+  if (!tx) return { status: 404, error: "Entry not found" };
+  if (tx.bill) return { status: 400, error: "This entry is a bill payment. Manage it from the bill." };
+  return { tx };
+}
+
+async function updateTransaction(req, res, next) {
+  try {
+    const found = await findManualEntry(req.params.id, req.user.id);
+    if (found.error) return res.status(found.status).json({ success: false, message: found.error });
+
+    const { error, status, fields } = await manualEntryFields({ ...found.tx.toObject(), ...req.body }, req.user.id);
+    if (error) return res.status(status || 400).json({ success: false, message: error });
+
+    const previousParty = found.tx.party;
+    Object.assign(found.tx, fields);
+    await found.tx.save();
+
+    await recalcPartyBalance(req.user.id, found.tx.party);
+    if (String(previousParty || "") !== String(found.tx.party || "")) {
+      await recalcPartyBalance(req.user.id, previousParty);
+    }
+
+    const tx = await Transaction.findById(found.tx._id).populate("party", "name").lean();
+    return res.json({ success: true, transaction: tx });
+  } catch (e) {
+    next(e);
+  }
+}
+
+async function deleteTransaction(req, res, next) {
+  try {
+    const found = await findManualEntry(req.params.id, req.user.id);
+    if (found.error) return res.status(found.status).json({ success: false, message: found.error });
+
+    await Transaction.deleteOne({ _id: found.tx._id });
+    await recalcPartyBalance(req.user.id, found.tx.party);
+
+    return res.json({ success: true, message: "Entry deleted" });
   } catch (e) {
     next(e);
   }
@@ -118,5 +162,7 @@ async function addTransaction(req, res, next) {
 module.exports = {
   listTransactions,
   addTransaction,
+  updateTransaction,
+  deleteTransaction,
   getFinanceStats
 };

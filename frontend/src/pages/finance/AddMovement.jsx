@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { 
@@ -27,16 +27,18 @@ export default function AddMovement() {
   const partyIdParam = searchParams.get('partyId') || ''
   const billIdParam = searchParams.get('billId') || ''
   const amountParam = searchParams.get('amount') || ''
-  
+  const editId = searchParams.get('edit') || ''
+
   const { user } = useAuth()
-  const { addTransaction } = useFinance()
+  const { addTransaction, updateTransaction, deleteTransaction, transactions, loaded: financeLoaded } = useFinance()
+  const editingTx = editId ? transactions.find(t => t._id === editId) : null
   const { parties } = useParties()
   const { recordPayment } = useBills()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
     defaultValues: {
       type: typeParam,
       date: dayjs().format('YYYY-MM-DD'),
@@ -51,6 +53,43 @@ export default function AddMovement() {
 
   const type = watch('type')
 
+  // Editing: fill the form with the saved entry once transactions have loaded
+  useEffect(() => {
+    if (!editingTx) return
+    reset({
+      type: editingTx.type,
+      date: dayjs(editingTx.date).format('YYYY-MM-DD'),
+      amount: String(editingTx.amount ?? ''),
+      partyId: (typeof editingTx.party === 'object' ? editingTx.party?._id : editingTx.party) || '',
+      billId: '',
+      paymentMode: editingTx.paymentMode || 'cash',
+      category: editingTx.category || '',
+      notes: editingTx.description || '',
+    })
+  }, [editingTx?._id, reset])
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this entry?')) return
+    setSaving(true)
+    try {
+      await deleteTransaction(editId)
+      navigate('/finance')
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to delete entry')
+      setSaving(false)
+    }
+  }
+
+  // Unknown id, or a bill payment (managed from its bill)
+  if (editId && financeLoaded && (!editingTx || editingTx.bill)) {
+    return (
+      <div className="page-wrapper" style={{ textAlign: 'center', paddingTop: 60 }}>
+        <p style={{ color: '#6B7280' }}>{editingTx?.bill ? 'This entry is a bill payment. Manage it from the bill.' : 'Entry not found.'}</p>
+        <button className="btn btn-primary" onClick={() => navigate('/finance')}>Back to Finance</button>
+      </div>
+    )
+  }
+
   const onSubmit = async (data) => {
     setSaving(true)
     try {
@@ -63,7 +102,9 @@ export default function AddMovement() {
         amount: parseFloat(data.amount)
       }
 
-      if (data.billId) {
+      if (editId) {
+        await updateTransaction(editId, payload)
+      } else if (data.billId) {
         // Recording a bill payment creates its own income entry and party adjustment
         const billModes = { cash: 'Cash', online: 'Online', bank: 'Bank Transfer', check: 'Cheque' }
         await recordPayment(data.billId, {
@@ -79,7 +120,7 @@ export default function AddMovement() {
       setDone(true)
       setTimeout(() => navigate('/finance'), 800)
     } catch (e) {
-      alert("Failed to save transaction")
+      alert(e.response?.data?.message || "Failed to save transaction")
     } finally {
       setSaving(false)
     }
@@ -111,9 +152,9 @@ export default function AddMovement() {
         </button>
         <div>
           <h2 style={{ fontWeight: 900, fontSize: '1.25rem', color: '#0F0D2E', margin: 0 }}>
-            {type === 'income' ? 'Record Income' : 'Record Expense'}
+            {editId ? (type === 'income' ? 'Edit Income' : 'Edit Expense') : (type === 'income' ? 'Record Income' : 'Record Expense')}
           </h2>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748B' }}>Add a new financial transaction</p>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748B' }}>{editId ? 'Update this transaction' : 'Add a new financial transaction'}</p>
         </div>
       </div>
 
@@ -235,10 +276,16 @@ export default function AddMovement() {
             {saving ? <Loader2 className="spin" size={20} /> : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={20} />
-                Save {type === 'income' ? 'Income' : 'Expense'}
+                {editId ? 'Update' : 'Save'} {type === 'income' ? 'Income' : 'Expense'}
               </div>
             )}
           </button>
+          {editId && (
+            <button type="button" onClick={handleDelete} disabled={saving}
+              style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', padding: 8 }}>
+              Delete this entry
+            </button>
+          )}
         </div>
       </form>
       <style>{`

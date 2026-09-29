@@ -5,7 +5,7 @@ const Vehicle = require("../models/Vehicle");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
-const Party = require("../models/Party");
+const { recalcPartyBalance } = require("../utils/partyBalance");
 
 /**
  * GET /api/admin/transport/bills
@@ -252,12 +252,10 @@ async function updateBillStatus(req, res, next) {
         date: new Date(),
         description: `Marked paid by admin — #${bill.billNumber || bill._id}`,
       });
-      if (bill.party) {
-        await Party.updateOne({ _id: bill.party, owner: bill.owner }, { $inc: { balance: -remaining } });
-      }
     }
     bill.status = "paid";
     await bill.save();
+    await recalcPartyBalance(bill.owner, bill.party);
 
     return res.json({ success: true, bill });
   } catch (e) {

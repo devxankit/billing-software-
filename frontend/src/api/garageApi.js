@@ -15,6 +15,11 @@ export async function addGarageVehicle(vehicleData) {
   return data
 }
 
+export async function updateGarageVehicle(id, vehicleData) {
+  const { data } = await apiClient.patch(`/garage/vehicles/${id}`, vehicleData)
+  return data
+}
+
 export async function deleteGarageVehicle(id) {
   const { data } = await apiClient.delete(`/garage/vehicles/${id}`)
   return data

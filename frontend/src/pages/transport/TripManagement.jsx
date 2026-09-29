@@ -4,7 +4,7 @@ import {
   Truck, MapPin, Plus, Calendar, Trash2, 
   Search, ArrowLeft, Loader2, CheckCircle2,
   Navigation, Hash, ArrowRight, X, Eye,
-  FileText, User, ExternalLink, CreditCard
+  FileText, User, ExternalLink, CreditCard, Pencil
 } from 'lucide-react'
 import { useVehicles } from '../../context/VehicleContext'
 import { useParties } from '../../context/PartyContext'
@@ -20,11 +20,32 @@ const emptyDelivery = (from = '') => ({
 
 const num = (v) => parseFloat(v) || 0
 
+const blankTripForm = () => ({
+  startDate: dayjs().format('YYYY-MM-DD'),
+  vehicleId: '',
+  partyId: '',
+  groupId: null, // Link to existing journey
+  source: '',
+  destination: '',
+  numberOfTrips: '1',
+  amount: '',
+  chalanNumber: '',
+  haltDays: '',
+  haltAmount: '',
+  extraCharges: '',
+  returnCharges: '',
+  isCompleted: true,
+  reason: '',
+  gstPercent: '',
+  gstAmount: '',
+  deliveries: [emptyDelivery()]
+})
+
 // Trip grand total: freight + hold + hamali + return + GST
 const tripTotal = (t) => num(t.amount) + num(t.haltAmount) + num(t.extraCharges) + num(t.returnCharges) + num(t.gstAmount)
 
 // UI Components
-const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, getTranslatedText }) => {
+const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, onEditLeg, getTranslatedText }) => {
   if (!isOpen || !trip) return null;
   const legs = trip.rawLegs || [];
   
@@ -82,7 +103,10 @@ const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, getTranslatedT
                   {leg.haltDays > 0 && <span style={{ fontSize: '0.65rem', background: '#F5F3FF', color: '#7C3AED', padding: '2px 6px', borderRadius: 4, marginLeft: 4, flexShrink: 0 }}>{leg.haltDays} {getTranslatedText('Days Hold')}</span>}
                 </div>
               </div>
-              <button className="leg-delete-btn" onClick={() => onDeleteLeg(leg._id || leg.id)}><Trash2 size={16} /></button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button className="leg-edit-btn" title={getTranslatedText('Edit')} onClick={() => onEditLeg(leg)}><Pencil size={15} /></button>
+                <button className="leg-delete-btn" onClick={() => onDeleteLeg(leg._id || leg.id)}><Trash2 size={16} /></button>
+              </div>
             </div>
           ))}
         </div>
@@ -119,6 +143,7 @@ export default function TripManagement() {
     'Amount (₹)', 'Delivery Locations', 'From Location', 'To Location', 'Challan No. / Bill No.', 'Hold Days',
     'Hold Charge (₹)', 'Return Charge', 'Required Unloading', 'Hamali Charges', 'Trip is completed',
     'Reason if Incomplete', 'Explain why trip was not completed...', 'Saving...', 'Save Trip Record',
+    'Edit Trip Details', 'Update Trip Record', 'Edit',
     'Search trips...', 'Journeys', 'Deselect All', 'Select All for Bill', 'View', 'Deliveries',
     'Journey Breakdown', 'Continuous Legs', 'Return', 'Hamali', 'Incomplete', 'Billed', 'In Draft',
     'Challan', 'View Journey Breakdown', 'No trips found for your search', 'No unbilled trips found.',
@@ -153,26 +178,49 @@ export default function TripManagement() {
   const isSavingRef = useRef(false)
   
   // Form state
-  const [formData, setFormData] = useState({
-    startDate: dayjs().format('YYYY-MM-DD'),
-    vehicleId: '',
-    partyId: '',
-    groupId: null, // Link to existing journey
-    source: '',
-    destination: '',
-    numberOfTrips: '1',
-    amount: '',
-    chalanNumber: '',
-    haltDays: '',
-    haltAmount: '',
-    extraCharges: '',
-    returnCharges: '',
-    isCompleted: true,
-    reason: '',
-    gstPercent: '',
-    gstAmount: '',
-    deliveries: [emptyDelivery()]
-  })
+  const [formData, setFormData] = useState(blankTripForm)
+  const [editingTripId, setEditingTripId] = useState(null)
+
+  const closeForm = () => {
+    setShowForm(false)
+    setEditingTripId(null)
+    setFormData(blankTripForm())
+  }
+
+  // Open one saved leg in the form. Older trips kept charges only at trip level,
+  // so those land on the first delivery.
+  const handleEditLeg = (leg) => {
+    const dels = leg.deliveries?.length ? leg.deliveries : [{ from: leg.source, to: leg.destination, chalanNumbers: leg.chalanNumber ? [leg.chalanNumber] : [] }]
+    const perDelivery = dels.some(d => d.amount != null)
+    const str = (v) => (v || v === 0) && Number(v) !== 0 ? String(v) : ''
+    setFormData({
+      ...blankTripForm(),
+      startDate: dayjs(leg.startDate).format('YYYY-MM-DD'),
+      vehicleId: leg.vehicle?._id || leg.vehicle || '',
+      partyId: leg.party?._id || leg.party || '',
+      groupId: leg.groupId || null,
+      source: leg.source || '',
+      destination: leg.destination || '',
+      numberOfTrips: String(dels.length),
+      isCompleted: leg.isCompleted !== false,
+      reason: leg.reason || '',
+      gstPercent: leg.gstPercent ? String(leg.gstPercent) : '',
+      deliveries: dels.map((d, i) => {
+        const src = perDelivery ? d : (i === 0 ? leg : {})
+        return {
+          from: d.from || '', to: d.to || '',
+          chalanNumbers: Array.isArray(d.chalanNumbers) ? d.chalanNumbers.join(', ') : (d.chalanNumbers || ''),
+          amount: perDelivery || i === 0 ? String(src.amount ?? '') : '0',
+          haltDays: str(src.haltDays), haltAmount: str(src.haltAmount),
+          extraCharges: str(src.extraCharges), returnCharges: str(src.returnCharges),
+        }
+      }),
+    })
+    setEditingTripId(leg._id || leg.id)
+    setIsDetailOpen(false)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // Trip-level charges are the sum of each delivery's charges
   const activeDeliveries = formData.deliveries.slice(0, parseInt(formData.numberOfTrips) || 1)
@@ -484,7 +532,7 @@ export default function TripManagement() {
       if (e.response?.status === 403 && e.response?.data?.requiresSubscription) {
         navigate('/subscription', { state: { fromBill: true } })
       } else {
-        alert("Failed to update bill")
+        alert(e.response?.data?.message || "Failed to update bill")
       }
     } finally {
       setIsBilling(false)
@@ -499,6 +547,7 @@ export default function TripManagement() {
   const handleAddLeg = (trip) => {
     // Scroll to top and open form
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    setEditingTripId(null)
     setShowForm(true)
     
     // Pre-fill with previous leg's data
@@ -564,30 +613,11 @@ export default function TripManagement() {
     }
 
     try {
-      const res = await createTrip(payload)
+      const res = editingTripId ? await updateTrip(editingTripId, payload) : await createTrip(payload)
       if (res.success) {
-        setTrips(prev => [res.trip, ...prev])
-        setShowForm(false)
-        setFormData({
-          startDate: dayjs().format('YYYY-MM-DD'),
-          vehicleId: '',
-          partyId: '',
-          groupId: null,
-          source: '',
-          destination: '',
-          numberOfTrips: '1',
-          amount: '',
-          chalanNumber: '',
-          haltDays: '',
-          haltAmount: '',
-          extraCharges: '',
-          returnCharges: '',
-          isCompleted: true,
-          reason: '',
-          gstPercent: '',
-          gstAmount: '',
-          deliveries: [emptyDelivery()]
-        })
+        if (editingTripId) loadTrips() // reload so vehicle/party details come back populated
+        else setTrips(prev => [res.trip, ...prev])
+        closeForm()
         // Enforce 5 second delay to prevent double submissions
         setTimeout(() => {
           setSaving(false)
@@ -627,9 +657,9 @@ export default function TripManagement() {
       <form onSubmit={handleAddTrip} className="page-wrapper animate-fadeIn trip-form-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', paddingBottom: 'calc(var(--bottom-nav-h) + 60px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Navigation size={22} color="var(--primary)" /> {getTranslatedText('Add Trip Details')}
+            <Navigation size={22} color="var(--primary)" /> {getTranslatedText(editingTripId ? 'Edit Trip Details' : 'Add Trip Details')}
           </h2>
-          <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost" style={{ height: 40, borderRadius: 10, padding: '0 12px', fontWeight: 700, fontSize: '0.8rem' }}>
+          <button type="button" onClick={closeForm} className="btn btn-ghost" style={{ height: 40, borderRadius: 10, padding: '0 12px', fontWeight: 700, fontSize: '0.8rem' }}>
              <ArrowLeft size={16} /> {getTranslatedText('Cancel')}
           </button>
         </div>
@@ -844,7 +874,7 @@ export default function TripManagement() {
             </div>
           </div>
           <button type="submit" className="btn btn-primary" disabled={saving} style={{ marginTop: 24, height: 50, borderRadius: 16, fontWeight: 800, width: '100%' }}>
-            {saving ? <><Loader2 size={18} className="spin" /> {getTranslatedText('Saving...')}</> : getTranslatedText('Save Trip Record')}
+            {saving ? <><Loader2 size={18} className="spin" /> {getTranslatedText('Saving...')}</> : getTranslatedText(editingTripId ? 'Update Trip Record' : 'Save Trip Record')}
           </button>
         </div>
       </form>
@@ -1113,6 +1143,7 @@ export default function TripManagement() {
         isOpen={isDetailOpen} 
         onClose={() => setIsDetailOpen(false)} 
         trip={selectedJourney}
+        onEditLeg={handleEditLeg}
         onDeleteLeg={async (lid) => {
           if (window.confirm(getTranslatedText('Delete this leg?'))) {
             try {
@@ -1179,6 +1210,8 @@ export default function TripManagement() {
         
         .leg-delete-btn { background: #FEE2E2; color: #EF4444; border: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
         .leg-delete-btn:hover { background: #EF4444; color: white; }
+        .leg-edit-btn { background: #F5F3FF; color: #7C3AED; border: none; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .leg-edit-btn:hover { background: #7C3AED; color: white; }
         
         .journey-summary-footer { padding: 20px; background: #F8FAFC; border-top: 1.5px solid #F1F5F9; }
         .summary-breakdown-row { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: #64748B; margin-bottom: 6px; }

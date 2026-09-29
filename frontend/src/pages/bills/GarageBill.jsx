@@ -303,10 +303,12 @@ export default function GarageBill({ initialData }) {
     if (isSubmitting.current) return;
     isSubmitting.current = true;
     setSaving(true)
+    // Declared outside try so the catch can stash it when redirecting to the subscription page
+    let payload
     try {
       const finalStatus = statusArg === 'draft' ? 'draft' : 'unpaid';
 
-      const payload = {
+      payload = {
         billType: 'garage',
         billingDate: data.billDate,
         party: data.partyId,

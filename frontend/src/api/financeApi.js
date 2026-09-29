@@ -14,3 +14,13 @@ export async function addTransaction(txData) {
   const { data } = await apiClient.post('/finance', txData)
   return data
 }
+
+export async function updateTransaction(id, txData) {
+  const { data } = await apiClient.patch(`/finance/${id}`, txData)
+  return data
+}
+
+export async function deleteTransaction(id) {
+  const { data } = await apiClient.delete(`/finance/${id}`)
+  return data
+}

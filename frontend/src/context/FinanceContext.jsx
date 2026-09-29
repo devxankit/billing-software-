@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useAuth } from './AuthContext'
-import { getTransactions, addTransaction as addTxApi, getFinanceStats } from '../api/financeApi'
+import { getTransactions, addTransaction as addTxApi, updateTransaction as updateTxApi, deleteTransaction as deleteTxApi, getFinanceStats } from '../api/financeApi'
 
 const FinanceContext = createContext(null)
 
@@ -46,12 +46,33 @@ export function FinanceProvider({ children }) {
     }
   }, [loadFinanceData])
 
+  const updateTransaction = useCallback(async (id, formData) => {
+    const res = await updateTxApi(id, formData)
+    if (res.success) {
+      setTransactions(prev => prev.map(t => (t._id === id ? res.transaction : t)))
+      loadFinanceData()
+      return res.transaction
+    }
+  }, [loadFinanceData])
+
+  const deleteTransaction = useCallback(async (id) => {
+    const res = await deleteTxApi(id)
+    if (res.success) {
+      setTransactions(prev => prev.filter(t => t._id !== id))
+      loadFinanceData()
+      return true
+    }
+    return false
+  }, [loadFinanceData])
+
   return (
-    <FinanceContext.Provider value={{ 
-      transactions, 
-      stats, 
-      loaded, 
-      addTransaction, 
+    <FinanceContext.Provider value={{
+      transactions,
+      stats,
+      loaded,
+      addTransaction,
+      updateTransaction,
+      deleteTransaction,
       refreshFinance: loadFinanceData 
     }}>
       {children}

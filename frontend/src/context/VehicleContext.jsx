@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import { getVehicles, createVehicle, updateVehicle, deleteVehicle as deleteTransportVehicle } from '../api/transportApi'
-import { getGarageVehicles, addGarageVehicle, deleteGarageVehicle } from '../api/garageApi'
+import { getGarageVehicles, addGarageVehicle, updateGarageVehicle, deleteGarageVehicle } from '../api/garageApi'
 
 const VehicleContext = createContext(null)
 
@@ -48,15 +48,17 @@ export function VehicleProvider({ children }) {
 
   const updateVehicleInDb = useCallback(async (id, data) => {
     try {
-      const res = await updateVehicle(id, data)
+      const res = isGarage ? await updateGarageVehicle(id, data) : await updateVehicle(id, data)
       if (res.success) {
         const normalized = { ...res.vehicle, id: res.vehicle._id || res.vehicle.id }
         setVehicles(prev => prev.map(v => (v._id === id || v.id === id) ? normalized : v))
+        return normalized
       }
     } catch (e) {
       console.error('Update vehicle failed:', e.message)
     }
-  }, [])
+    return null
+  }, [isGarage])
 
   return (
     <VehicleContext.Provider value={{ vehicles, addVehicle, updateVehicle: updateVehicleInDb, deleteVehicle: deleteVehicleInDb }}>

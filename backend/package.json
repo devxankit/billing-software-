@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node tests/auth-payments.test.js && node tests/billing.test.js && node tests/hardening.test.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:admin": "node scripts/seedAdmin.js"
@@ -31,6 +31,7 @@
     "razorpay": "^2.9.6"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.4.3",
     "nodemon": "^3.1.14"
   }
 }

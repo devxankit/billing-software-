@@ -9,5 +9,7 @@ router.use(authRequired);
 router.get("/stats", financeController.getFinanceStats);
 router.get("/", financeController.listTransactions);
 router.post("/", financeController.addTransaction);
+router.patch("/:id", financeController.updateTransaction);
+router.delete("/:id", financeController.deleteTransaction);
 
 module.exports = router;

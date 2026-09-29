@@ -8,6 +8,7 @@ const notificationService = require("../services/notification.service");
 const User = require("../../models/User");
 const Party = require("../models/Party");
 const Counter = require("../models/Counter");
+const { recalcPartyBalance } = require("../utils/partyBalance");
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -364,6 +365,7 @@ async function createBill(req, res, next) {
       const bill = await TransportBill.create(billData);
       // Drafts reserve their trips too, so the same trip can't go on a second bill
       await syncBillTrips(req.user.id, bill._id, tripIds, isFinal);
+      await recalcPartyBalance(req.user.id, bill.party);
 
       const populatedBill = await TransportBill.findById(bill._id).populate("party").populate("owner", OWNER_FIELDS);
 
@@ -379,6 +381,7 @@ async function createBill(req, res, next) {
     if (isFinal) billData.billNumber = await genBillNumber("garage", req.user.id);
 
     const bill = await GarageBill.create(billData);
+    await recalcPartyBalance(req.user.id, bill.party);
 
     const populatedBill = await GarageBill.findById(bill._id).populate("party").populate("owner", OWNER_FIELDS);
 
@@ -489,6 +492,12 @@ async function updateBill(req, res, next) {
       await syncBillTrips(req.user.id, bill._id, tripIds, updatedBill.status !== "draft");
     }
 
+    // Totals or the billed party may have changed
+    await recalcPartyBalance(req.user.id, bill.party);
+    if (String(updatedBill.party?._id || updatedBill.party || "") !== String(bill.party || "")) {
+      await recalcPartyBalance(req.user.id, updatedBill.party?._id || updatedBill.party);
+    }
+
     if (becomingFinal) {
       await sendBillNotification(updatedBill, type, "created");
     }
@@ -584,14 +593,10 @@ async function deleteBill(req, res, next) {
       await Trip.updateMany({ owner: req.user.id, billId: bill._id }, { $set: { billed: false, billId: null } });
     }
 
-    // Undo the money side: payment entries go, and the party balance gets back what payments took off it
-    const paymentsTotal = (bill.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-    if (bill.party && paymentsTotal > 0) {
-      await Party.updateOne({ _id: bill.party, owner: req.user.id }, { $inc: { balance: paymentsTotal } });
-    }
+    // Undo the money side: its payment entries go and the party balance no longer counts it
     await Transaction.deleteMany({ owner: req.user.id, bill: bill._id });
-
     await Model.deleteOne({ _id: bill._id });
+    await recalcPartyBalance(req.user.id, bill.party);
 
     return res.json({ success: true, message: "Bill deleted successfully" });
   } catch (e) {
@@ -691,10 +696,7 @@ async function recordPayment(req, res, next) {
         description: notes || `Payment received for ${resolvedType === 'garage' ? 'Job Card' : 'Invoice'} #${bill.billNumber || bill._id}`
       });
 
-      // Update party balance in DB to match payment adjustment
-      if (bill.party) {
-        await Party.updateOne({ _id: bill.party, owner: req.user.id }, { $inc: { balance: -paymentAmount } });
-      }
+      await recalcPartyBalance(req.user.id, bill.party);
     } catch (txErr) {
       console.warn("[recordPayment] Transaction/Party update failed:", txErr.message);
     }

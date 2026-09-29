@@ -230,9 +230,11 @@ export default function TransportBill({ initialData }) {
     if (isSubmitting.current) return;
     isSubmitting.current = true;
     setSaving(true)
+    // Declared outside try so the catch can stash it when redirecting to the subscription page
+    let payload
     try {
       const finalStatus = statusArg === 'draft' ? 'draft' : 'unpaid';
-      const payload = {
+      payload = {
         billedToName:    data.billedToName,
         billedToPhone:   data.billedToPhone,
         billedToEmail:   data.billedToEmail,

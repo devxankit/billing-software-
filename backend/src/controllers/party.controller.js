@@ -3,6 +3,7 @@ const TransportBill = require("../models/TransportBill");
 const GarageBill = require("../models/GarageBill");
 const Trip = require("../models/Trip");
 const { stripProtected } = require("../utils/sanitizeBody");
+const { recalcPartyBalance } = require("../utils/partyBalance");
 
 const User = require("../../models/User");
 const notificationService = require("../services/notification.service");
@@ -24,6 +25,7 @@ async function createParty(req, res, next) {
   try {
     const data = { ...stripProtected(req.body, ["balance"]), owner: req.user.id };
     const party = await Party.create(data);
+    party.balance = await recalcPartyBalance(req.user.id, party._id);
 
     // Notify the Owner
     const owner = await User.findById(req.user.id);
@@ -50,6 +52,8 @@ async function updateParty(req, res, next) {
       { returnDocument: "after", runValidators: true }
     );
     if (!party) return res.status(404).json({ success: false, message: "Party not found" });
+    // Opening balance/type may have changed
+    party.balance = await recalcPartyBalance(req.user.id, party._id);
     return res.json({ success: true, party });
   } catch (e) {
     return next(e);
