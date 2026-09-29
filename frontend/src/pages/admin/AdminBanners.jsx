@@ -192,6 +192,15 @@ export default function AdminBanners() {
                   </select>
                 </div>
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Action Link / Target URL (for Get Started button)</label>
+                  <input 
+                    className="form-input" 
+                    value={banner.link || ''} 
+                    onChange={e => updateBanner(banner.id, 'link', e.target.value)} 
+                    placeholder="e.g., /insurance, /transport/trips, or https://example.com"
+                  />
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
                     Banner Image
                     {banner.imageUrl && <span style={{ color: '#10B981', fontWeight: 800 }}>✓ Uploaded</span>}

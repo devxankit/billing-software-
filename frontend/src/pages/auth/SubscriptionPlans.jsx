@@ -12,7 +12,7 @@ export default function SubscriptionPlans() {
     'Pick a professional subscription to power your business workflow.',
     'Yearly Plans', 'Subscribe Now', 'Failed to create order',
     'Razorpay SDK failed to load. Are you online?', 'Payment verification failed',
-    'Something went wrong with the payment process', 'mo', 'yr', 'GST'
+    'Something went wrong with the payment process', 'mo', 'yr', 'GST', 'Skip for now'
   ])
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
@@ -237,6 +237,18 @@ export default function SubscriptionPlans() {
           )
         })}
       </div>
+      {/* During signup, let the user continue to the app without subscribing */}
+      {!location.state?.fromBill && !location.state?.fromProfile && (
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard', { replace: true })}
+            style={{ background: '#F1F5F9', color: '#475569', border: 'none', borderRadius: 16, padding: '12px 28px', fontSize: '0.875rem', fontWeight: 800, cursor: 'pointer' }}
+          >
+            {getTranslatedText('Skip for now')}
+          </button>
+        </div>
+      )}
       <style>{`.spin { animation: spin 0.8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )

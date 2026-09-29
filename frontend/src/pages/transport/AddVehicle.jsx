@@ -7,6 +7,7 @@ import { useVehicles } from '../../context/VehicleContext'
 import { useAuth } from '../../context/AuthContext'
 import TranslatedText from '../../components/TranslatedText'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 const VEHICLE_TYPES = ['Tempo', 'Truck', 'Mini Truck', 'Heavy Truck', 'Container', 'Tanker', 'Trailer', 'Other']
 
@@ -110,13 +111,13 @@ export default function AddVehicle() {
               <input 
                 id="field-vehicle-owner" 
                 {...register('ownerName', {
-                  pattern: { value: /^[a-zA-Z\s]*$/, message: 'Only letters and spaces allowed' }
+                  pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters allowed' }
                 })} 
                 placeholder={getTranslatedText('Owner name (Optional)')} 
                 className={`form-input ${errors.ownerName ? 'error' : ''}`}
                 style={{ textTransform: 'capitalize' }}
                 onInput={e => {
-                  e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                  e.target.value = stripNonPersonName(e.target.value)
                   setValue('ownerName', e.target.value)
                 }}
                 onBlur={e => {

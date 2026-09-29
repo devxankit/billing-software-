@@ -13,6 +13,16 @@ import dayjs from 'dayjs'
 import { getTrips, createTrip, updateTrip, deleteTrip as deleteTripApi } from '../../api/transportApi'
 import { getDrafts as getDraftsApi, createBill, updateBill as updateBillApi } from '../../api/billApi'
 
+const emptyDelivery = (from = '') => ({
+  from, to: '', chalanNumbers: '',
+  amount: '', haltDays: '', haltAmount: '', extraCharges: '', returnCharges: ''
+})
+
+const num = (v) => parseFloat(v) || 0
+
+// Trip grand total: freight + hold + hamali + return + GST
+const tripTotal = (t) => num(t.amount) + num(t.haltAmount) + num(t.extraCharges) + num(t.returnCharges) + num(t.gstAmount)
+
 // UI Components
 const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, getTranslatedText }) => {
   if (!isOpen || !trip) return null;
@@ -59,9 +69,10 @@ const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, getTranslatedT
                 </div>
                 <div className="leg-meta" style={{ flexWrap: 'wrap', rowGap: '8px' }}>
                   <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>₹{parseFloat(leg.amount).toLocaleString()}</span>
-                  {leg.extraCharges > 0 && <span style={{ color: '#D97706', whiteSpace: 'nowrap', flexShrink: 0 }}>+₹{leg.extraCharges}</span>}
+                  {leg.extraCharges > 0 && <span style={{ color: '#D97706', whiteSpace: 'nowrap', flexShrink: 0 }}>+₹{leg.extraCharges} (Hamali)</span>}
                   {leg.haltAmount > 0 && <span style={{ color: '#7C3AED', whiteSpace: 'nowrap', flexShrink: 0 }}>+₹{leg.haltAmount} (Hold)</span>}
                   {leg.returnCharges > 0 && <span style={{ color: '#047857', whiteSpace: 'nowrap', flexShrink: 0 }}>+₹{leg.returnCharges} (Ret)</span>}
+                  {leg.gstAmount > 0 && <span style={{ color: '#0369A1', whiteSpace: 'nowrap', flexShrink: 0 }}>+₹{leg.gstAmount} (GST)</span>}
                   <span style={{ flexShrink: 0 }}>•</span>
                   <span style={{ flexShrink: 0 }}>
                     {Array.isArray(leg.chalanNumbers) && leg.chalanNumbers.length > 0 
@@ -77,9 +88,21 @@ const JourneyDetailModal = ({ isOpen, onClose, trip, onDeleteLeg, getTranslatedT
         </div>
         
         <div className="journey-summary-footer">
-          <div className="summary-item">
+          {[
+            { label: getTranslatedText('Trip Amount'), value: num(trip.amount) },
+            { label: `${getTranslatedText('Hold Charges')}${num(trip.haltDays) > 0 ? ` (${num(trip.haltDays)} ${getTranslatedText('Days')})` : ''}`, value: num(trip.haltAmount) },
+            { label: getTranslatedText('Hamali Charges'), value: num(trip.extraCharges) },
+            { label: getTranslatedText('Return Charges'), value: num(trip.returnCharges) },
+            { label: getTranslatedText('GST Amount'), value: num(trip.gstAmount) },
+          ].map(row => (
+            <div key={row.label} className="summary-breakdown-row">
+              <span>{row.label}</span>
+              <span>₹{row.value.toLocaleString()}</span>
+            </div>
+          ))}
+          <div className="summary-item" style={{ borderTop: '1px dashed #E2E8F0', paddingTop: 10, marginTop: 6 }}>
             <span className="label">{getTranslatedText('Total Amount')}</span>
-            <span className="value">₹{trip.amount.toLocaleString()}</span>
+            <span className="value">₹{tripTotal(trip).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -100,7 +123,7 @@ export default function TripManagement() {
     'Journey Breakdown', 'Continuous Legs', 'Return', 'Hamali', 'Incomplete', 'Billed', 'In Draft',
     'Challan', 'View Journey Breakdown', 'No trips found for your search', 'No unbilled trips found.',
     'Start logging your trips today!', 'Trips Selected', 'Clear', 'Draft', 'Draft Bills', 'Total Amount', 'Days Hold',
-    'GST (%)', 'GST Amount (₹)', 'No GST'
+    'GST (%)', 'GST Amount (₹)', 'No GST', 'Trip Amount', 'Hold Charges', 'Return Charges', 'GST Amount', 'Days'
   ])
   const { vehicles } = useVehicles()
   const { parties } = useParties()
@@ -148,8 +171,30 @@ export default function TripManagement() {
     reason: '',
     gstPercent: '',
     gstAmount: '',
-    deliveries: [{ from: '', to: '', chalanNumbers: '' }]
+    deliveries: [emptyDelivery()]
   })
+
+  // Trip-level charges are the sum of each delivery's charges
+  const activeDeliveries = formData.deliveries.slice(0, parseInt(formData.numberOfTrips) || 1)
+  const formTotals = useMemo(() => {
+    const sum = (key) => activeDeliveries.reduce((acc, d) => acc + num(d[key]), 0)
+    return {
+      amount: sum('amount'),
+      haltDays: sum('haltDays'),
+      haltAmount: sum('haltAmount'),
+      extraCharges: sum('extraCharges'),
+      returnCharges: sum('returnCharges'),
+    }
+  }, [formData.deliveries, formData.numberOfTrips])
+  const formSubtotal = formTotals.amount + formTotals.haltAmount + formTotals.extraCharges + formTotals.returnCharges
+
+  const updateDelivery = (idx, patch) => {
+    setFormData(prev => {
+      const newD = [...prev.deliveries]
+      newD[idx] = { ...newD[idx], ...patch }
+      return { ...prev, deliveries: newD }
+    })
+  }
 
   // Load trips from API
   // Filter & Search Logic
@@ -280,14 +325,8 @@ export default function TripManagement() {
 
   // Dynamic GST calculation on complete subtotal (Base + Hold + Return + Hamali)
   useEffect(() => {
-    const amt = parseFloat(formData.amount) || 0;
-    const halt = parseFloat(formData.haltAmount) || 0;
-    const extra = parseFloat(formData.extraCharges) || 0; // Hamali Charges
-    const ret = parseFloat(formData.returnCharges) || 0;  // Return Charges
     const percent = parseFloat(formData.gstPercent) || 0;
-
-    const subtotal = amt + halt + extra + ret;
-    const calculatedGst = (subtotal * percent) / 100;
+    const calculatedGst = (formSubtotal * percent) / 100;
     const nextGstAmt = calculatedGst > 0 ? calculatedGst.toFixed(2) : '';
 
     if (formData.gstAmount !== nextGstAmt) {
@@ -296,14 +335,7 @@ export default function TripManagement() {
         gstAmount: nextGstAmt
       }));
     }
-  }, [
-    formData.amount, 
-    formData.haltAmount, 
-    formData.extraCharges, 
-    formData.returnCharges, 
-    formData.gstPercent, 
-    formData.gstAmount
-  ]);
+  }, [formSubtotal, formData.gstPercent, formData.gstAmount]);
 
   const handleBulkAddToDraft = async (draftId = null, forceStatus = 'draft') => {
     if (isBillingRef.current || selectedIds.length === 0) return
@@ -356,6 +388,28 @@ export default function TripManagement() {
               : del.chalanNumbers;
             const deliveryChalan = joinedChalan || chalanNo;
 
+            // Newer trips store charges per delivery — bill each row with its own entered values
+            if (del.amount != null) {
+              const rowSubtotal = num(del.amount) + num(del.haltAmount) + num(del.extraCharges) + num(del.returnCharges)
+              billItems.push({
+                date,
+                companyFrom: del.from,
+                companyTo: del.to,
+                chalanNo: deliveryChalan,
+                tempoNo: vNum,
+                extraAmount: num(del.extraCharges).toString(),
+                returnAmount: num(del.returnCharges).toString(),
+                gstPercent: tGstPercent,
+                gstAmount: parseFloat(((rowSubtotal * tGstPercent) / 100).toFixed(2)),
+                haltDays: num(del.haltDays),
+                haltAmount: num(del.haltAmount),
+                amount: num(del.amount).toString(),
+                tripIds: [trip._id || trip.id]
+              })
+              return
+            }
+
+            // Older trips: all charges were entered once per trip, so they sit on the first row
             billItems.push({
               date,
               companyFrom: del.from,
@@ -464,7 +518,7 @@ export default function TripManagement() {
       haltDays: '',
       haltAmount: '',
       otherCharge: '',
-      deliveries: [{ from: trip.destination || trip.toLocation, to: '', chalanNumbers: '' }]
+      deliveries: [emptyDelivery(trip.destination || trip.toLocation)]
     })
   }
 
@@ -480,24 +534,29 @@ export default function TripManagement() {
     if (!formData.partyId) { setSaving(false); isSavingRef.current = false; return alert("Please select an Account/Party"); }
     if (!formData.source) { setSaving(false); isSavingRef.current = false; return alert("Please enter the Starting Location (From)"); }
     if (!formData.destination) { setSaving(false); isSavingRef.current = false; return alert("Please enter the Destination (To)"); }
-    if (!formData.amount) { setSaving(false); isSavingRef.current = false; return alert("Please enter the Trip Amount (₹)"); }
+    if (activeDeliveries.some(d => d.amount === '' || d.amount == null)) { setSaving(false); isSavingRef.current = false; return alert("Please enter the Amount (₹) for every delivery"); }
 
     const payload = {
       ...formData,
       vehicle: formData.vehicleId,
       party: formData.partyId,
       numberOfTrips: parseInt(formData.numberOfTrips) || 1,
-      amount: parseFloat(formData.amount),
-      extraCharges: parseFloat(formData.extraCharges) || 0,
-      haltDays: parseFloat(formData.haltDays) || 0,
-      haltAmount: parseFloat(formData.haltAmount) || 0,
-      returnCharges: parseFloat(formData.returnCharges) || 0,
+      amount: formTotals.amount,
+      extraCharges: formTotals.extraCharges,
+      haltDays: formTotals.haltDays,
+      haltAmount: formTotals.haltAmount,
+      returnCharges: formTotals.returnCharges,
       gstPercent: parseFloat(formData.gstPercent) || 0,
       gstAmount: parseFloat(formData.gstAmount) || 0,
       isCompleted: formData.isCompleted,
       reason: formData.reason,
-      deliveries: formData.deliveries.slice(0, parseInt(formData.numberOfTrips) || 1).map(d => ({
+      deliveries: activeDeliveries.map(d => ({
         ...d,
+        amount: num(d.amount),
+        haltDays: num(d.haltDays),
+        haltAmount: num(d.haltAmount),
+        extraCharges: num(d.extraCharges),
+        returnCharges: num(d.returnCharges),
         chalanNumbers: typeof d.chalanNumbers === 'string' 
           ? d.chalanNumbers.split(',').map(s => s.trim()).filter(Boolean)
           : d.chalanNumbers
@@ -527,7 +586,7 @@ export default function TripManagement() {
           reason: '',
           gstPercent: '',
           gstAmount: '',
-          deliveries: [{ from: '', to: '', chalanNumbers: '' }]
+          deliveries: [emptyDelivery()]
         })
         // Enforce 5 second delay to prevent double submissions
         setTimeout(() => {
@@ -565,7 +624,7 @@ export default function TripManagement() {
 
   if (showForm) {
     return (
-      <form onSubmit={handleAddTrip} className="page-wrapper animate-fadeIn trip-form-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' }}>
+      <form onSubmit={handleAddTrip} className="page-wrapper animate-fadeIn trip-form-card" style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', paddingBottom: 'calc(var(--bottom-nav-h) + 60px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Navigation size={22} color="var(--primary)" /> {getTranslatedText('Add Trip Details')}
@@ -616,7 +675,7 @@ export default function TripManagement() {
               onChange={e => {
                 const val = parseInt(e.target.value);
                 const newDeliveries = [...formData.deliveries];
-                while(newDeliveries.length < val) newDeliveries.push({ from: '', to: '' });
+                while(newDeliveries.length < val) newDeliveries.push(emptyDelivery());
                 setFormData({...formData, numberOfTrips: e.target.value, deliveries: newDeliveries});
               }} 
               className="form-input"
@@ -625,16 +684,6 @@ export default function TripManagement() {
               <option value="2">{getTranslatedText('2 Deliveries')}</option>
               <option value="3">{getTranslatedText('3 Deliveries')}</option>
             </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">{getTranslatedText('Amount (₹)')}</label>
-            <input 
-              type="number" 
-              value={formData.amount} 
-              onChange={e => setFormData({...formData, amount: e.target.value})} 
-              placeholder="1500" 
-              className="form-input" 
-            />
           </div>
         </div>
 
@@ -686,43 +735,44 @@ export default function TripManagement() {
                 className="form-input" 
                 style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}
               />
-            </div>
-          ))}
-        </div>
-
-        <div className="responsive-grid" style={{ gap: 16 }}>
-          <div className="responsive-grid span-2" style={{ gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label" style={{ color: '#7C3AED' }}>{getTranslatedText('Hold Days')}</label>
-              <input type="number" value={formData.haltDays} onChange={e => setFormData({...formData, haltDays: e.target.value})} placeholder={getTranslatedText('Days')} className="form-input" style={{ color: '#7C3AED', fontWeight: 700 }} />
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ color: '#7C3AED' }}>{getTranslatedText('Hold Charge (₹)')}</label>
-              <div className="input-group">
-                <span className="input-prefix" style={{ color: '#7C3AED' }}>₹</span>
-                <input type="number" value={formData.haltAmount} onChange={e => setFormData({...formData, haltAmount: e.target.value})} placeholder={getTranslatedText('Amount')} className="form-input" style={{ color: '#7C3AED', fontWeight: 700 }} />
+              <div className="delivery-charges-grid">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">{getTranslatedText('Amount (₹)')}</label>
+                  <div className="input-group">
+                    <span className="input-prefix">₹</span>
+                    <input type="number" value={formData.deliveries[idx]?.amount ?? ''} onChange={e => updateDelivery(idx, { amount: e.target.value })} placeholder="1500" className="form-input" required />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ color: '#7C3AED' }}>{getTranslatedText('Hold Days')}</label>
+                  <input type="number" value={formData.deliveries[idx]?.haltDays ?? ''} onChange={e => updateDelivery(idx, { haltDays: e.target.value })} placeholder={getTranslatedText('Days')} className="form-input" style={{ color: '#7C3AED', fontWeight: 700 }} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ color: '#7C3AED' }}>{getTranslatedText('Hold Charge (₹)')}</label>
+                  <div className="input-group">
+                    <span className="input-prefix" style={{ color: '#7C3AED' }}>₹</span>
+                    <input type="number" value={formData.deliveries[idx]?.haltAmount ?? ''} onChange={e => updateDelivery(idx, { haltAmount: e.target.value })} placeholder="0" className="form-input" style={{ color: '#7C3AED', fontWeight: 700 }} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ color: '#D97706' }}>{getTranslatedText('Hamali Charges')}</label>
+                  <div className="input-group">
+                    <span className="input-prefix" style={{ color: '#D97706' }}>₹</span>
+                    <input type="number" value={formData.deliveries[idx]?.extraCharges ?? ''} onChange={e => updateDelivery(idx, { extraCharges: e.target.value })} placeholder="0" className="form-input" style={{ color: '#D97706', fontWeight: 700 }} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857', fontWeight: !formData.isCompleted ? 900 : 700 }}>
+                    {getTranslatedText('Return Charge')} {!formData.isCompleted && <span style={{ fontSize: '0.6rem' }}>{getTranslatedText('Required Unloading')}</span>}
+                  </label>
+                  <div className="input-group">
+                    <span className="input-prefix" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857' }}>₹</span>
+                    <input type="number" value={formData.deliveries[idx]?.returnCharges ?? ''} onChange={e => updateDelivery(idx, { returnCharges: e.target.value })} placeholder="0" className="form-input" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857', fontWeight: 900 }} />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="responsive-grid" style={{ gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857', fontWeight: !formData.isCompleted ? 900 : 700 }}>
-              {getTranslatedText('Return Charge')} {!formData.isCompleted && <span style={{ fontSize: '0.6rem' }}>{getTranslatedText('Required Unloading')}</span>}
-            </label>
-            <div className="input-group">
-              <span className="input-prefix" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857' }}>₹</span>
-              <input type="number" value={formData.returnCharges} onChange={e => setFormData({...formData, returnCharges: e.target.value})} placeholder="0" className="form-input" style={{ color: !formData.isCompleted ? '#DC2626' : '#047857', fontWeight: 900 }} />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label" style={{ color: '#D97706' }}>{getTranslatedText('Hamali Charges')}</label>
-            <div className="input-group">
-              <span className="input-prefix" style={{ color: '#D97706' }}>₹</span>
-              <input type="number" value={formData.extraCharges} onChange={e => setFormData({...formData, extraCharges: e.target.value})} placeholder="0" className="form-input" style={{ color: '#D97706', fontWeight: 700 }} />
-            </div>
-          </div>
+          ))}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -781,7 +831,7 @@ export default function TripManagement() {
           <div style={{ background: '#1E1B4B', borderRadius: 20, padding: '20px 24px', color: 'white', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 15px 35px rgba(30, 27, 75, 0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.8 }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Subtotal</span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.haltAmount) || 0) + (parseFloat(formData.extraCharges) || 0) + (parseFloat(formData.returnCharges) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>₹{formSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: 0.8 }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>GST Amount</span>
@@ -790,7 +840,7 @@ export default function TripManagement() {
             <div style={{ height: 1, background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '1.1rem', fontWeight: 900 }}>Total</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 950, letterSpacing: '-0.02em' }}>₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.haltAmount) || 0) + (parseFloat(formData.extraCharges) || 0) + (parseFloat(formData.returnCharges) || 0) + (parseFloat(formData.gstAmount) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 950, letterSpacing: '-0.02em' }}>₹{(formSubtotal + num(formData.gstAmount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           <button type="submit" className="btn btn-primary" disabled={saving} style={{ marginTop: 24, height: 50, borderRadius: 16, fontWeight: 800, width: '100%' }}>
@@ -951,7 +1001,7 @@ export default function TripManagement() {
                         }
                         {(parseFloat(trip.extraCharges) || 0) > 0 && 
                           <div className="trip-badge extra" style={{ background: '#FEF3C7', color: '#D97706' }}>
-                            +₹{(parseFloat(trip.extraCharges)).toLocaleString()} {getTranslatedText('Extra')}
+                            +₹{(parseFloat(trip.extraCharges)).toLocaleString()} {getTranslatedText('Hamali')}
                           </div>
                         }
                         {(parseFloat(trip.haltAmount) || 0) > 0 && 
@@ -980,7 +1030,7 @@ export default function TripManagement() {
 
                     <div className="trip-card-actions" onClick={e => e.stopPropagation()}>
                       <div className="action-left">
-                        {trip.amount && <div className="trip-amount-badge">₹{parseFloat(trip.amount).toLocaleString()}</div>}
+                        {trip.amount > 0 && <div className="trip-amount-badge">₹{tripTotal(trip).toLocaleString()}</div>}
                       </div>
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1131,6 +1181,7 @@ export default function TripManagement() {
         .leg-delete-btn:hover { background: #EF4444; color: white; }
         
         .journey-summary-footer { padding: 20px; background: #F8FAFC; border-top: 1.5px solid #F1F5F9; }
+        .summary-breakdown-row { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: #64748B; margin-bottom: 6px; }
         .summary-item { display: flex; justify-content: space-between; align-items: center; }
         .summary-item .label { font-weight: 800; color: #64748B; font-size: 0.875rem; }
         .summary-item .value { font-weight: 950; color: #0F0D2E; font-size: 1.25rem; }
@@ -1174,6 +1225,8 @@ export default function TripManagement() {
           gap: 16px;
         }
         .span-2 { grid-column: span 2; }
+        .delivery-charges-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .delivery-charges-grid > :first-child { grid-column: span 2; }
         @media (max-width: 640px) {
           .responsive-grid {
             grid-template-columns: 1fr !important;

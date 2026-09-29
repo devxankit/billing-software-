@@ -9,6 +9,14 @@ import { useAdmin } from '../../context/AdminContext'
 
 const ITEMS_PER_PAGE = 8
 
+// Distinct colours per bill status (Draft must not look like Pending)
+const STATUS_STYLES = {
+  paid:    { bg: '#DCFCE7', color: '#16A34A' },
+  pending: { bg: '#FEF3C7', color: '#D97706' },
+  draft:   { bg: '#E0E7FF', color: '#4F46E5' },
+}
+const getStatusStyle = (status) => STATUS_STYLES[status?.toLowerCase()] || STATUS_STYLES.pending
+
 function InvoiceModal({ mode, businesses, users, existing, onSave, onClose }) {
   const isTransport = mode === 'transport'
   const [form, setForm] = useState(existing || {
@@ -73,8 +81,8 @@ function InvoiceModal({ mode, businesses, users, existing, onSave, onClose }) {
               <div style={{
                 padding: '0 8px', borderRadius: 10, fontWeight: 800, fontSize: '0.75rem',
                 textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center',
-                background: form.status === 'Paid' || form.status === 'paid' ? '#DCFCE7' : '#FEE2E2',
-                color: form.status === 'Paid' || form.status === 'paid' ? '#16A34A' : '#DC2626',
+                background: getStatusStyle(form.status).bg,
+                color: getStatusStyle(form.status).color,
                 height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
                 {form.status || 'Pending'}
@@ -131,7 +139,7 @@ function InvoiceModal({ mode, businesses, users, existing, onSave, onClose }) {
 }
 
 export default function BillingMonitor() {
-  const { mode, invoices, addInvoice, updateInvoice, deleteInvoice, adminUpdateBillStatus, businesses, users, stats } = useAdmin()
+  const { mode, invoices, addInvoice, updateInvoice, deleteInvoice, adminUpdateBillStatus, businesses, users, stats, refreshAll } = useAdmin()
   const isTransport = mode === 'transport'
   const accentColor = '#7C3AED'
   const accentLight = '#EDE9FE'
@@ -142,6 +150,11 @@ export default function BillingMonitor() {
   const [showDates, setShowDates] = useState(false)
   const [page, setPage] = useState(1)
   const [modal, setModal] = useState(null)
+
+  // Reload bills on open so payments recorded by users since the last load are reflected
+  useEffect(() => {
+    refreshAll()
+  }, [refreshAll])
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
@@ -183,7 +196,8 @@ export default function BillingMonitor() {
     const headers = ['Invoice ID', 'Date', 'Business', 'User', 'Total (INR)', 'Status']
     const rows = filtered.map(inv => [
       `"${inv.id || ''}"`,
-      `"${inv.date || ''}"`,
+      // ="..." makes Excel treat the date as text so it never renders as ######
+      inv.date ? `"=""${inv.date}"""` : '""',
       `"${inv.businessName || ''}"`,
       `"${inv.userName || ''}"`,
       inv.total || 0,
@@ -195,7 +209,7 @@ export default function BillingMonitor() {
       ...rows.map(r => r.join(','))
     ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
@@ -261,6 +275,7 @@ export default function BillingMonitor() {
             <option value="All">All Status</option>
             <option value="Paid">Paid</option>
             <option value="Pending">Pending</option>
+            <option value="Draft">Draft</option>
           </select>
           <button 
             type="button"
@@ -363,8 +378,8 @@ export default function BillingMonitor() {
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{
                       fontSize: '0.65rem', fontWeight: 900, textTransform: 'uppercase', padding: '4px 10px', borderRadius: 99,
-                      background: inv.status === 'Paid' ? 'var(--success-light)' : '#FEF3C7',
-                      color: inv.status === 'Paid' ? 'var(--success)' : '#D97706'
+                      background: getStatusStyle(inv.status).bg,
+                      color: getStatusStyle(inv.status).color
                     }}>{inv.status}</span>
                   </td>
                 </tr>

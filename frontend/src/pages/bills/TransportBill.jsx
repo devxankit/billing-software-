@@ -12,6 +12,9 @@ import { getTrips } from '../../api/transportApi'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import dayjs from 'dayjs'
 
+// Show a stored 0 as an empty field so a typed number replaces it instead of appending to "0"
+const blankZero = (v) => (parseFloat(v) ? String(v) : '')
+
 function Field({ label, error, children, required, style }) {
   return (
     <div className="form-group" style={style}>
@@ -86,16 +89,16 @@ export default function TransportBill({ initialData }) {
       items: initialData?.items?.map(it => ({
         ...it,
         date: dayjs(it.date).format('YYYY-MM-DD'),
-        amount: it.amount?.toString(),
+        amount: blankZero(it.amount),
         tempoNo: it.tempoNo || '',
-        haltDays: it.haltDays?.toString() || '0',
-        haltAmount: it.haltAmount?.toString() || '0',
-        extraAmount: it.extraAmount?.toString() || '',
-        returnAmount: it.returnAmount?.toString() || '',
+        haltDays: blankZero(it.haltDays),
+        haltAmount: blankZero(it.haltAmount),
+        extraAmount: blankZero(it.extraAmount),
+        returnAmount: blankZero(it.returnAmount),
         gstPercent: it.gstPercent?.toString() || '0',
         gstAmount: it.gstAmount?.toString() || '0'
       })) || [
-        { date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '0', haltAmount: '0', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }
+        { date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }
       ],
       extraCharges: initialData?.extraCharges?.toString() || '0',
       gstPercent: initialData?.gstPercent?.toString() || '0',
@@ -125,12 +128,12 @@ export default function TransportBill({ initialData }) {
           items: data.items?.map(it => ({
             ...it,
             date: dayjs(it.date).format('YYYY-MM-DD'),
-            amount: it.amount?.toString(),
+            amount: blankZero(it.amount),
             tempoNo: it.tempoNo || '',
-            haltDays: it.haltDays?.toString() || '0',
-            haltAmount: it.haltAmount?.toString() || '0',
-            extraAmount: it.extraAmount?.toString() || '',
-            returnAmount: it.returnAmount?.toString() || '',
+            haltDays: blankZero(it.haltDays),
+            haltAmount: blankZero(it.haltAmount),
+            extraAmount: blankZero(it.extraAmount),
+            returnAmount: blankZero(it.returnAmount),
             gstPercent: it.gstPercent?.toString() || '0',
             gstAmount: it.gstAmount?.toString() || '0'
           })) || [],
@@ -163,15 +166,15 @@ export default function TransportBill({ initialData }) {
         items: initialData.items?.map(it => ({
           ...it,
           date: dayjs(it.date).format('YYYY-MM-DD'),
-          amount: it.amount?.toString(),
+          amount: blankZero(it.amount),
           tempoNo: it.tempoNo || '',
-          haltDays: it.haltDays?.toString() || '0',
-          haltAmount: it.haltAmount?.toString() || '0',
-          extraAmount: it.extraAmount?.toString() || '',
-          returnAmount: it.returnAmount?.toString() || '',
+          haltDays: blankZero(it.haltDays),
+          haltAmount: blankZero(it.haltAmount),
+          extraAmount: blankZero(it.extraAmount),
+          returnAmount: blankZero(it.returnAmount),
           gstPercent: it.gstPercent?.toString() || '0',
           gstAmount: it.gstAmount?.toString() || '0'
-        })) || [{ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '0', haltAmount: '0', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }],
+        })) || [{ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }],
         extraCharges: initialData.extraCharges?.toString() || '0',
         gstPercent: initialData.gstPercent?.toString() || '0',
         gstType: initialData.gstType || 'CGST+SGST',
@@ -298,7 +301,7 @@ export default function TransportBill({ initialData }) {
         <button className="btn btn-primary" onClick={() => navigate(`/bills/${savedBill._id || savedBill.id}`)}>
           <FileText size={16} /> {getTranslatedText('View Invoice')}
         </button>
-        <button className="btn btn-ghost" onClick={() => { setSavedBill(null); reset(); navigate('/transport/bills/new'); }}>
+        <button className="btn" onClick={() => { setSavedBill(null); reset(); navigate('/transport/bills/new'); }} style={{ background: '#0F0D2E', color: '#FFFFFF', border: 'none', fontWeight: 800 }}>
           <Plus size={16} /> {getTranslatedText('Create Another')}
         </button>
       </div>
@@ -307,9 +310,9 @@ export default function TransportBill({ initialData }) {
 
   return (
     <div className="page-wrapper animate-fadeIn" style={{ maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden', paddingBottom: 40 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: 20, width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: '200px' }}>
+      {/* Header — fixed on mobile so only the form scrolls */}
+      <div className="bill-form-header" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: 20, width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <button onClick={() => isEdit ? navigate(`/bills/${initialData._id}`) : navigate('/transport/bills')} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280', flexShrink: 0 }}>
             <ArrowLeft size={18} />
           </button>
@@ -318,12 +321,13 @@ export default function TransportBill({ initialData }) {
             <p style={{ fontSize: '0.7rem', color: '#6B7280', margin: 0, lineHeight: 1.2 }}>{getTranslatedText('Consolidated Billing Summary')}</p>
           </div>
         </div>
-        <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'flex-end', minWidth: '140px' }}>
-          <input type="date" {...register('billDate')} className="form-input" style={{ fontSize: '0.85rem', padding: '8px 12px', borderRadius: 12, background: 'white', border: '1.5px solid #E2E8F0', width: '100%', maxWidth: '160px' }} />
+        <div style={{ flex: '0 1 auto', display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+          <input type="date" {...register('billDate')} className="form-input" style={{ fontSize: '0.85rem', padding: '8px 12px', borderRadius: 12, background: 'white', border: '1.5px solid #E2E8F0', width: '100%', maxWidth: '150px' }} />
         </div>
       </div>
+      <div className="bill-form-header-spacer" />
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} onFocus={e => { if (e.target.type === 'number') e.target.select() }}>
         {/* Billed To */}
         <SectionCard icon={User} iconBg="#EDE9FE" iconColor="#7C3AED" title={getTranslatedText('Billed To (Party)')}>
           {!partyId ? (
@@ -565,8 +569,8 @@ export default function TransportBill({ initialData }) {
 
                   {showHalt && (
                     <div className="responsive-grid span-2" style={{ gap: 12 }}>
-                      <Field label={getTranslatedText('Hold Days')}><input type="number" {...register(`items.${index}.haltDays`)} placeholder="Days" className="form-input" /></Field>
-                      <Field label={getTranslatedText('Hold Charge (₹)')}><div className="input-group"><span className="input-prefix" style={{ left: 14 }}>₹</span><input type="number" {...register(`items.${index}.haltAmount`)} placeholder="Amount" className="form-input" /></div></Field>
+                      <Field label={getTranslatedText('Hold Days')}><input type="number" {...register(`items.${index}.haltDays`)} placeholder="0" className="form-input" /></Field>
+                      <Field label={getTranslatedText('Hold Charge (₹)')}><div className="input-group"><span className="input-prefix" style={{ left: 14 }}>₹</span><input type="number" {...register(`items.${index}.haltAmount`)} placeholder="0" className="form-input" /></div></Field>
                     </div>
                   )}
 
@@ -580,7 +584,7 @@ export default function TransportBill({ initialData }) {
               </div>
             ))}
           </div>
-          <button type="button" onClick={() => append({ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '0', haltAmount: '0', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' })} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed #E5E7EB', background: '#F9FAFB', fontWeight: 700, fontSize: '0.875rem', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button type="button" onClick={() => append({ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' })} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed #E5E7EB', background: '#F9FAFB', fontWeight: 700, fontSize: '0.875rem', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Plus size={18} /> {getTranslatedText('Add Another Trip')}
           </button>
         </SectionCard>
@@ -616,7 +620,7 @@ export default function TransportBill({ initialData }) {
         </div>
       </form>
       <style>{`
-        .spin { animation: spin 0.8s linear infinite; } 
+        .spin { animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .responsive-grid {
           display: grid;
@@ -624,6 +628,15 @@ export default function TransportBill({ initialData }) {
           gap: 16px;
         }
         .span-2 { grid-column: span 2; }
+        .bill-form-header-spacer { display: none; }
+        @media (max-width: 768px) {
+          .bill-form-header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 400;
+            margin: 0 !important; padding: 10px 16px; box-sizing: border-box;
+            background: #FFFFFF; border-bottom: 1px solid rgba(0,0,0,0.06);
+          }
+          .bill-form-header-spacer { display: block; height: 52px; }
+        }
         @media (max-width: 640px) {
           .responsive-grid {
             grid-template-columns: 1fr !important;

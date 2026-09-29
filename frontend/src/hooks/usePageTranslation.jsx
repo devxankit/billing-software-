@@ -1,14 +1,21 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
-import { translateBatch } from "../services/translationService";
+import { translateBatch, translateBatchSync } from "../services/translationService";
 
 export function usePageTranslation(staticTexts = [], options = { sourceLang: "en" }) {
   const { language } = useLanguage();
-  const [translations, setTranslations] = useState({});
+  // Seed from the local cache so already-translated pages don't flash English first
+  const [translations, setTranslations] = useState(() =>
+    translateBatchSync(staticTexts, language, options.sourceLang)
+  );
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
     if (!staticTexts || staticTexts.length === 0) return;
+
+    const cachedMap = translateBatchSync(staticTexts, language, options.sourceLang);
+    setTranslations(cachedMap);
+    if (staticTexts.every(t => cachedMap[t])) return;
 
     async function fetchTranslations() {
       setIsTranslating(true);

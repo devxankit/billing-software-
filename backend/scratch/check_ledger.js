@@ -1,8 +1,9 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 
 async function checkLedger() {
   try {
-    await mongoose.connect('mongodb+srv://trans:trans123@cluster0.svafcga.mongodb.net/trans');
+    await mongoose.connect(process.env.MONGO_URI);
 
     const Bill = require('../models/Bill');
     const Transaction = require('../models/Transaction');

@@ -75,7 +75,7 @@ export default function BankDetailsSetup() {
   }
 
   return (
-    <div className="animate-fadeIn" style={{ maxWidth: 500, margin: '40px auto', padding: '0 20px' }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 500, margin: '0 auto', padding: 0 }}>
       <div style={{ textAlign: 'center', marginBottom: 24, position: 'relative' }}>
         {/* Back Button */}
         <button 

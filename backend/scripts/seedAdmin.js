@@ -8,7 +8,11 @@ const { hashPassword } = require("../src/utils/password");
 
 async function main() {
   const email = "panchalajay717@gmail.com".trim().toLowerCase();
-  const password = "789456";
+  const password = process.env.ADMIN_SEED_PASSWORD;
+  if (!password) {
+    console.error("Set ADMIN_SEED_PASSWORD in backend/.env before running this script.");
+    process.exit(1);
+  }
   const defaultOtp = "123456";
 
   if (!process.env.MONGO_URI) {

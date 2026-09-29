@@ -35,9 +35,9 @@ export default function TransportVehicleSetup() {
   }
 
   return (
-    <div className="animate-fadeIn" style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 40 }}>
+    <div className="animate-fadeIn setup-page-container" style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 40 }}>
       {/* Header (Outside Card) */}
-      <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative' }}>
+      <div className="setup-header-fixed" style={{ textAlign: 'center', marginBottom: 20, position: 'sticky', top: 0, zIndex: 30, background: 'rgba(248, 250, 252, 0.98)', paddingTop: 10, paddingBottom: 14, borderRadius: '0 0 20px 20px', borderBottom: '1px solid #E2E8F0' }}>
         {/* Back Button */}
         <button
           onClick={() => navigate('/register/transport', { state: { editMode: true, startStep: 3 } })}
@@ -154,9 +154,8 @@ export default function TransportVehicleSetup() {
           </div>
         )}
 
-        {vehicles.length > 0 && (
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/subscription')}
             style={{ 
               width: '100%', height: 48, borderRadius: 14, 
               background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
@@ -166,9 +165,8 @@ export default function TransportVehicleSetup() {
             }}
             className="hover:scale-[1.01] active:scale-[0.98]"
           >
-            Proceed to Dashboard <ChevronRight size={18} />
+            {vehicles.length > 0 ? 'Continue' : 'Skip for now'} <ChevronRight size={18} />
           </button>
-        )}
       </div>
 
       <style>{`

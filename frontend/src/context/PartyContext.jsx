@@ -64,6 +64,7 @@ export function PartyProvider({ children }) {
       }
     } catch (e) {
       console.error('Delete party failed:', e.message)
+      alert(e.response?.data?.message || 'Failed to delete party. Please try again.')
     }
     return false
   }, [])

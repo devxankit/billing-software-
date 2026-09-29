@@ -28,6 +28,26 @@ const chunkArray = (array, size) => {
   return result;
 };
 
+// Scan-to-pay QR: the owner's uploaded QR, else one generated from their UPI ID for this bill's amount
+const paymentQrSrc = (business, bill) => {
+  const bank = business?.bankDetails || {}
+  if (bank.qrUrl) return bank.qrUrl
+  if (!bank.upiId) return null
+  const upiUrl = `upi://pay?pa=${bank.upiId}&pn=${encodeURIComponent(business?.businessName || 'Business')}&am=${(bill?.grandTotal || 0).toFixed(2)}&cu=INR`
+  return `https://quickchart.io/qr?text=${encodeURIComponent(upiUrl)}&size=200`
+}
+
+function PaymentQr({ business, bill, size }) {
+  const src = paymentQrSrc(business, bill)
+  if (!src) return null
+  return (
+    <div style={{ textAlign: 'center', flexShrink: 0 }}>
+      <img src={src} crossOrigin="anonymous" alt="Scan to pay" style={{ width: size, height: size, objectFit: 'contain', display: 'block' }} />
+      <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#555', marginTop: 2 }}>SCAN TO PAY</div>
+    </div>
+  )
+}
+
 export function TransportInvoice({ bill, business, getTranslatedText = (t) => t }) {
   const items = [...(bill.items || [])].sort((a, b) => new Date(a.date) - new Date(b.date))
   const itemChunks = items.length > 0 ? chunkArray(items, 10) : [[]]
@@ -181,13 +201,14 @@ export function TransportInvoice({ bill, business, getTranslatedText = (t) => t 
             <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', alignItems: 'start' }}>
               <div style={{ border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ background: '#fff9e6', padding: '6px 12px', fontSize: '0.7rem', fontWeight: 800, borderBottom: '1px solid #ccc' }}>{getTranslatedText('BANK DETAILS')} :</div>
-                <div style={{ padding: '8px 12px', backgroundColor: '#fff' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <div style={{ padding: '8px 12px', backgroundColor: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.65rem' }}><span style={{ fontWeight: 600, color: '#555' }}>A/c No : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.accountNumber || business?.bankAccNo || ''}</span></div>
                     <div style={{ fontSize: '0.65rem' }}><span style={{ fontWeight: 600, color: '#555' }}>IFSC : </span><span style={{ fontWeight: 900 }}>{(business?.bankDetails?.ifsc || business?.bankIfsc || '').toUpperCase()}</span></div>
                     <div style={{ fontSize: '0.65rem', marginTop: 3 }}><span style={{ fontWeight: 600, color: '#555' }}>Name : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.accountName || business?.name || ''}</span></div>
                     <div style={{ fontSize: '0.65rem', marginTop: 3 }}><span style={{ fontWeight: 600, color: '#555' }}>Bank : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.bankName || business?.bankName || ''}</span></div>
                   </div>
+                  <PaymentQr business={business} bill={bill} size={64} />
                 </div>
               </div>
               <div style={{ textAlign: 'center' }}>
@@ -334,13 +355,14 @@ export function GarageInvoice({ bill, business, getTranslatedText = (t) => t }) 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
                     <div style={{ background: '#F9FAFB', padding: '8px 12px', fontSize: '0.75rem', fontWeight: 800, borderBottom: '1px solid #E5E7EB' }}>{getTranslatedText('BANK DETAILS')}</div>
-                    <div style={{ padding: '10px 12px', backgroundColor: '#fff' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div style={{ padding: '10px 12px', backgroundColor: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '0.7rem' }}><span style={{ fontWeight: 600, color: '#555' }}>A/c No : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.accountNumber || business?.bankAccNo || ''}</span></div>
                         <div style={{ fontSize: '0.7rem' }}><span style={{ fontWeight: 600, color: '#555' }}>IFSC : </span><span style={{ fontWeight: 900 }}>{(business?.bankDetails?.ifsc || business?.bankIfsc || '').toUpperCase()}</span></div>
                         <div style={{ fontSize: '0.7rem', marginTop: 3 }}><span style={{ fontWeight: 600, color: '#555' }}>Name : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.accountName || business?.name || ''}</span></div>
                         <div style={{ fontSize: '0.7rem', marginTop: 3 }}><span style={{ fontWeight: 600, color: '#555' }}>Bank : </span><span style={{ fontWeight: 900 }}>{business?.bankDetails?.bankName || business?.bankName || ''}</span></div>
                       </div>
+                      <PaymentQr business={business} bill={bill} size={64} />
                     </div>
                   </div>
                   <div style={{ border: '1px solid #E5E7EB', padding: '10px 12px', borderRadius: 8, background: '#F9FAFB' }}>
@@ -368,8 +390,10 @@ export function GarageInvoice({ bill, business, getTranslatedText = (t) => t }) 
               </div>
             </div>
           </div>
-          {/* Bottom Yellow Banner */}
-          <div style={{ height: 12, background: themeColor, borderRadius: '0 0 8px 8px', position: 'absolute', bottom: 0, left: 0, right: 0 }} />
+          {/* Bottom Yellow Banner with slogan */}
+          <div style={{ height: 30, background: themeColor, borderRadius: '0 0 8px 8px', position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800, color: '#000' }}>
+            {business?.slogan || 'Restoring Vehicles, Reviving Peace of Mind'}
+          </div>
         </div>
       ))}
     </div>

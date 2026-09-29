@@ -9,7 +9,7 @@ const { saveFcmToken, removeFcmToken, sendTestNotification } = require('../contr
 router.get('/banners', getBanners);
 
 // Admin only access to manage banners
-router.post('/banners', authRequired, updateBanners);
+router.post('/banners', authRequired, adminRequired, updateBanners);
 
 // Notification Token Management
 router.post('/save-fcm-token', authRequired, saveFcmToken);

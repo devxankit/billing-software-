@@ -91,7 +91,10 @@ export function AdminProvider({ children }) {
       }
 
       if (bRes.success) {
-        const formatted = bRes.bills.map(b => ({
+        const formatted = bRes.bills.map(b => {
+          // Payments are recorded in paidAmount; a bill marked paid without payment entries counts as fully paid
+          const paid = b.status === 'paid' ? (b.paidAmount || b.grandTotal || 0) : (b.paidAmount || 0)
+          return {
           id: b.billNumber || b._id,
           businessName: b.owner?.businessName || b.owner?.name || '—',
           userName: b.owner?.name || '—',
@@ -99,10 +102,11 @@ export function AdminProvider({ children }) {
           status: b.status === 'paid' ? 'Paid' : b.status === 'draft' ? 'Draft' : 'Pending',
           date: new Date(b.billingDate || b.createdAt).toISOString().split('T')[0],
           tax: b.gstAmount || 0,
-          paymentReceived: b.paymentReceived || 0,
-          pendingAmount: b.grandTotal - (b.paymentReceived || 0),
+          paymentReceived: paid,
+          pendingAmount: Math.max(0, (b.grandTotal || 0) - paid),
           items: b.items || []
-        }))
+          }
+        })
         setInvoicesRaw(formatted)
       }
 

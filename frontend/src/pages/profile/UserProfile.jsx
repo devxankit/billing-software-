@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { User, Mail, Phone, Loader2, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 function Field({ label, error, children, required }) {
   return (
@@ -82,10 +83,10 @@ export default function UserProfile() {
                   <span className="input-prefix"><User size={16} /></span>
                   <input {...register('name', { 
                     required: getTranslatedText('Name is required'),
-                    pattern: { value: /^[a-zA-Z\s]+$/, message: 'Only letters are allowed' }
+                    pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters are allowed' }
                   })} 
                   onInput={(e) => {
-                    e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                    e.target.value = stripNonPersonName(e.target.value);
                   }}
                   placeholder={getTranslatedText('Your Full Name')} className="form-input" />
                 </div>

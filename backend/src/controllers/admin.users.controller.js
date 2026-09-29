@@ -24,7 +24,9 @@ function userRow(u) {
     gstin: u.gstin || null,
     gstNo: u.gstin || null, // mapping alias
     setupComplete: !!u.setupComplete,
-    subscriptionActive: !!u.subscriptionActive,
+    // An expired subscription is not active, whatever the stored flag says
+    subscriptionActive: !!u.subscriptionActive && (!u.subscriptionExpiry || new Date(u.subscriptionExpiry) > new Date()),
+    subscriptionExpiry: u.subscriptionExpiry || null,
     isDeleted: !!u.isDeleted,
     documents: u.documents || {},
     signatureUrl: u.signatureUrl || null,
@@ -59,10 +61,12 @@ async function list(req, res, next) {
 
     if (q) {
       const phone = sanitizePhone(q);
+      // Match the text literally — characters like ( or + must not act as regex syntax
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { businessName: { $regex: q, $options: "i" } },
-        { email: { $regex: q, $options: "i" } },
+        { name: { $regex: safe, $options: "i" } },
+        { businessName: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
         ...(phone ? [{ phone: { $regex: phone } }] : []),
       ];
     }
@@ -255,7 +259,7 @@ async function getUserHistory(req, res, next) {
       fleetRaw = gFleet;
     } else {
       const [tTrips, tBills, tVehicles] = await Promise.all([
-        require("../models/Trip").find({ owner: id }).populate("vehicle").sort({ createdAt: -1 }).limit(100),
+        require("../models/Trip").find({ owner: id }).populate("vehicle").sort({ startDate: -1, createdAt: -1 }).limit(100),
         require("../models/TransportBill").find({ owner: id }).sort({ createdAt: -1 }).limit(100),
         require("../models/Vehicle").find({ owner: id }).sort({ createdAt: -1 })
       ]);
@@ -271,8 +275,9 @@ async function getUserHistory(req, res, next) {
           id: t._id,
           date: t.startDate || t.createdAt,
           vehicle: t.vehicle?.vehicleNumber || "—",
-          status: t.billed ? "Billed" : "Pending",
-          amount: t.totalFreight || 0
+          route: t.source && t.destination ? `${t.source} → ${t.destination}` : "",
+          status: t.status === "cancelled" ? "Cancelled" : (t.billed ? "Billed" : "Pending"),
+          amount: t.amount || 0
         })),
         bills: billsRaw.map(b => ({
           id: b.billNumber || b._id,

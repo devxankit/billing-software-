@@ -44,11 +44,12 @@ export default function TermsPrivacy() {
   }
 
   return (
-    <div className="page-wrapper animate-fadeIn" style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 60, paddingLeft: 16, paddingRight: 16, paddingTop: 24 }}>
+    // Full-height column: header stays fixed, only the content below scrolls
+    <div className="animate-fadeIn" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, minHeight: 36 }}>
+      <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 36, padding: 'calc(env(safe-area-inset-top, 0px) + 16px) 16px 16px' }}>
         <button onClick={handleBack} style={{
-          position: 'absolute', left: 0,
+          position: 'absolute', left: 16,
           width: 36, height: 36, borderRadius: 10, border: 'none',
           background: 'rgba(0,0,0,0.06)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280'
@@ -58,6 +59,7 @@ export default function TermsPrivacy() {
         <h2 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0F0D2E', margin: 0, textAlign: 'center' }}>{title}</h2>
       </div>
 
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0 16px 60px' }}>
       <div className="card" style={{ padding: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
           <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
@@ -123,6 +125,7 @@ export default function TermsPrivacy() {
             transbilling.support@gmail.com
           </a>
         </div>
+      </div>
       </div>
     </div>
   )

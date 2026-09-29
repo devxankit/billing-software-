@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import logo from '../../assets/trans-logo.png'
 import { uploadSingleFile } from '../../api/uploadApi'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 const STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
@@ -274,10 +275,10 @@ export default function BusinessProfile() {
               <Field label={getTranslatedText('Owner Name')} error={errors.name} required>
                 <input {...register('name', { 
                   required: getTranslatedText('Owner name is required'),
-                  pattern: { value: /^[a-zA-Z\s]+$/, message: 'Only letters are allowed' }
+                  pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters are allowed' }
                 })} 
                 onInput={(e) => {
-                  e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                  e.target.value = stripNonPersonName(e.target.value);
                 }}
                 placeholder={getTranslatedText('Owner Name')} className="form-input" />
               </Field>

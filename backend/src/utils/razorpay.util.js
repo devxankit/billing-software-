@@ -13,12 +13,14 @@ const razorpay = new Razorpay({
  * Create a Razorpay Order
  * @param {number} amount - Amount in INR (not paise)
  * @param {string} receipt - Unique receipt ID
+ * @param {object} notes - Stored on the order (e.g. planId/userId) so verification can check them
  */
-async function createRazorpayOrder(amount, receipt) {
+async function createRazorpayOrder(amount, receipt, notes = {}) {
   const options = {
     amount: Math.round(amount * 100), // convert to paise
     currency: "INR",
     receipt: receipt,
+    notes,
   };
 
   try {
@@ -40,10 +42,20 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
     .update(body.toString())
     .digest("hex");
 
-  return expectedSignature === signature;
+  const expected = Buffer.from(expectedSignature);
+  const given = Buffer.from(String(signature || ""));
+  return expected.length === given.length && crypto.timingSafeEqual(expected, given);
+}
+
+/**
+ * Fetch an order from Razorpay (source of truth for amount + notes)
+ */
+async function fetchRazorpayOrder(orderId) {
+  return razorpay.orders.fetch(orderId);
 }
 
 module.exports = {
   createRazorpayOrder,
   verifyRazorpaySignature,
+  fetchRazorpayOrder,
 };

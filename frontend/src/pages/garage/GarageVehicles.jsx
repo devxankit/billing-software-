@@ -10,6 +10,7 @@ import { useVehicles } from '../../context/VehicleContext'
 import { useBills } from '../../context/BillContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import dayjs from 'dayjs'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 const formatName = (str) => {
   if (!str) return ''
@@ -207,10 +208,10 @@ export default function GarageVehicles() {
               <Field label={getTranslatedText('Owner Name')} error={errors.customerName}>
                 <input 
                   {...register('customerName', {
-                    pattern: { value: /^[a-zA-Z\s]*$/, message: 'Only letters and spaces allowed' }
+                    pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters allowed' }
                   })} 
                   onInput={e => {
-                    e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                    e.target.value = stripNonPersonName(e.target.value)
                     setValue('customerName', e.target.value)
                   }}
                   onBlur={e => setValue('customerName', formatName(e.target.value))}

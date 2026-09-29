@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../../context/AuthContext'
@@ -23,7 +23,7 @@ function Field({ label, error, children, required }) {
 export default function AdminProfile() {
   const { user, updateProfile } = useAuth()
   const navigate = useNavigate()
-  const [tab, setTab] = useState('view') // 'view' | 'edit' | 'password'
+  const [tab, setTab] = useState('edit') // 'view' | 'edit' | 'password' — opens directly on edit
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [errMsg, setErrMsg] = useState('')
@@ -39,6 +39,11 @@ export default function AdminProfile() {
     }
   })
 
+  // Pre-fill the edit form once the user profile is available
+  useEffect(() => {
+    reset({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' })
+  }, [user, reset])
+
   const { register: regPwd, handleSubmit: handlePwd, formState: { errors: pwdErrors }, watch: watchPwd, reset: resetPwd } = useForm()
 
   const onEditSubmit = async (data) => {
@@ -49,7 +54,6 @@ export default function AdminProfile() {
       const res = await updateProfile({ name: data.name, email: data.email })
       if (res?.success) {
         setSuccess('Profile updated successfully!')
-        setTab('view')
       } else {
         setErrMsg(res?.message || 'Update failed.')
       }
@@ -72,7 +76,7 @@ export default function AdminProfile() {
       if (res.data?.success) {
         setSuccess('Password changed successfully!')
         resetPwd()
-        setTab('view')
+        setTab('edit')
       } else {
         setErrMsg(res.data?.message || 'Failed to change password.')
       }
@@ -87,7 +91,7 @@ export default function AdminProfile() {
     .split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: '24px 0' }}>
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '24px 0', minHeight: 'calc(100dvh - 160px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <button

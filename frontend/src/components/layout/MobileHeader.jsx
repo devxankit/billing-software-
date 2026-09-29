@@ -47,9 +47,8 @@ export default function MobileHeader({
       className="mobile-header fixed top-0 left-0 right-0"
       style={{
         position: 'fixed',
-        background: 'rgba(240, 239, 234, 0.75)', /* blends with --bg */
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: '#FFFFFF', /* solid so scrolled content doesn't show through */
+        zIndex: 500,
         padding: '0 16px',
         height: '60px', /* Increased for better touch */
         borderBottom: '1px solid rgba(0,0,0,0.05)'

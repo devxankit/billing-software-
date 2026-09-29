@@ -63,10 +63,17 @@ export default function AddMovement() {
         amount: parseFloat(data.amount)
       }
 
-      await addTransaction(payload)
-      
       if (data.billId) {
-        await recordPayment(data.billId, data.amount)
+        // Recording a bill payment creates its own income entry and party adjustment
+        const billModes = { cash: 'Cash', online: 'Online', bank: 'Bank Transfer', check: 'Cheque' }
+        await recordPayment(data.billId, {
+          amount: parseFloat(data.amount),
+          date: data.date,
+          mode: billModes[data.paymentMode] || 'Cash',
+          notes: data.notes || '',
+        })
+      } else {
+        await addTransaction(payload)
       }
       
       setDone(true)

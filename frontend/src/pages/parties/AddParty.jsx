@@ -9,6 +9,7 @@ import { useParties } from '../../context/PartyContext'
 import { useAuth } from '../../context/AuthContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import { uploadSingleFile } from '../../api/uploadApi'
+import { BUSINESS_NAME_PATTERN } from '../../utils/nameValidation'
 
 const formatName = (str) => {
   if (!str) return ''
@@ -139,7 +140,7 @@ export default function AddParty() {
                 {...register('name', { 
                   required: getTranslatedText('Party name is required'),
                   minLength: { value: 3, message: getTranslatedText('Minimum 3 characters') },
-                  pattern: { value: /^[a-zA-Z0-9\s.]+$/, message: getTranslatedText('Invalid characters') }
+                  pattern: { value: BUSINESS_NAME_PATTERN, message: getTranslatedText('Invalid characters') }
                 })}
                 onBlur={e => setValue('name', formatName(e.target.value))}
                 placeholder={getTranslatedText('e.g. Ramesh Traders')}

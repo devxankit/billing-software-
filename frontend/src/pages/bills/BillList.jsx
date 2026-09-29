@@ -491,10 +491,36 @@ export default function BillList({ type }) {
           {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 20 }} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: 28 }}>
-          <FileText size={48} color="#E5E7EB" style={{ marginBottom: 16 }} />
-          <h3 style={{ margin: 0, color: '#111827' }}>{getTranslatedText('No bills found')}</h3>
-          <p style={{ color: '#6B7280', fontSize: '0.875rem' }}>{search ? getTranslatedText('Try a different search term') : getTranslatedText('Start by creating a new invoice')}</p>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: '60px 20px',
+          background: 'white',
+          borderRadius: 28,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+          border: '1px solid #F1F5F9',
+          boxSizing: 'border-box',
+          width: '100%'
+        }}>
+          <div style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            background: '#F8FAFC',
+            border: '1.5px solid #F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+          }}>
+            <FileText size={36} color="#94A3B8" style={{ display: 'block', margin: 'auto' }} />
+          </div>
+          <h3 style={{ margin: 0, color: '#111827', fontSize: '1.125rem', fontWeight: 800 }}>{getTranslatedText('No bills found')}</h3>
+          <p style={{ color: '#6B7280', fontSize: '0.875rem', marginTop: 8, marginBottom: 0 }}>{search ? getTranslatedText('Try a different search term') : getTranslatedText('Start by creating a new invoice')}</p>
         </div>
       ) : (viewMode === 'party' && !selectedParty) ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

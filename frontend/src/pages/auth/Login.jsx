@@ -35,9 +35,11 @@ export default function Login() {
     if (res.success) {
       localStorage.setItem('temp_login_phone', sanitizedPhone)
       localStorage.setItem('temp_is_new_user', res.isNewUser ? 'true' : 'false')
-      navigate('/otp', { state: { phone: sanitizedPhone, isNewUser: res.isNewUser } })
+      const ttl = res.ttlSeconds || 300
+      sessionStorage.setItem('otp_expires_at', String(Date.now() + ttl * 1000))
+      navigate('/otp', { state: { phone: sanitizedPhone, isNewUser: res.isNewUser, ttlSeconds: ttl } })
     } else {
-      setError('Could not send OTP. Please try again.')
+      setError(res.message || 'Could not send OTP. Please try again.')
     }
   }
 
@@ -54,7 +56,6 @@ export default function Login() {
       width: '100%', 
       maxWidth: 480,
       margin: 'auto', 
-      paddingBottom: 20,
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',

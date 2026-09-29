@@ -35,7 +35,13 @@ const TripSchema = new mongoose.Schema(
       {
         from: { type: String },
         to: { type: String },
-        chalanNumbers: [{ type: String }]
+        chalanNumbers: [{ type: String }],
+        // Per-delivery charges (absent on older trips, where charges live only at trip level)
+        amount: { type: Number },
+        haltDays: { type: Number },
+        haltAmount: { type: Number },
+        extraCharges: { type: Number },
+        returnCharges: { type: Number }
       }
     ],
     notes: { type: String, default: null },

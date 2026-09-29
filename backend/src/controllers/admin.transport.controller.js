@@ -4,6 +4,8 @@ const GarageBill = require("../models/GarageBill");
 const Vehicle = require("../models/Vehicle");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
+const Transaction = require("../models/Transaction");
+const Party = require("../models/Party");
 
 /**
  * GET /api/admin/transport/bills
@@ -156,7 +158,13 @@ async function getGlobalTripHistory(req, res, next) {
     const { status, limit = 100, page = 1 } = req.query;
     const filter = {};
     if (status) {
-      if (status === 'ongoing') {
+      // "billed" / "pending" follow the billing state the transporter sees on their trips page
+      if (status === 'billed') {
+        filter.billed = true;
+      } else if (status === 'pending') {
+        filter.billed = false;
+        filter.status = { $ne: 'cancelled' };
+      } else if (status === 'ongoing') {
         filter.status = 'active';
       } else if (status === 'scheduled') {
         filter.status = 'pending';
@@ -197,22 +205,59 @@ async function getGlobalTripHistory(req, res, next) {
 async function updateBillStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const { status, type } = req.body; // type is 'transport' or 'garage'
+    const { type } = req.body; // 'transport' or 'garage'
+    // "pending" is the admin UI's name for an unpaid bill
+    const status = String(req.body.status || "").toLowerCase() === "pending" ? "unpaid" : String(req.body.status || "").toLowerCase();
 
-    if (!['paid', 'unpaid', 'pending', 'draft'].includes(status?.toLowerCase())) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
+    if (!["paid", "unpaid"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Status must be paid or unpaid" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid bill ID" });
     }
 
-    let bill;
-    if (type === 'transport') {
-      bill = await TransportBill.findByIdAndUpdate(id, { status: status.toLowerCase() }, { new: true });
-    } else {
-      bill = await GarageBill.findByIdAndUpdate(id, { status: status.toLowerCase() }, { new: true });
-    }
-
+    const Model = type === "garage" ? GarageBill : TransportBill;
+    const bill = await Model.findById(id);
     if (!bill) {
       return res.status(404).json({ success: false, message: "Bill not found" });
     }
+    if (bill.status === "draft") {
+      return res.status(400).json({ success: false, message: "Draft bills must be finalised by the owner first" });
+    }
+
+    const paid = bill.paidAmount || 0;
+
+    if (status === "unpaid") {
+      if (paid > 0) {
+        return res.status(400).json({ success: false, message: "This bill has payments recorded and cannot be set back to unpaid" });
+      }
+      bill.status = "unpaid";
+      await bill.save();
+      return res.json({ success: true, bill });
+    }
+
+    // Mark paid: record the remaining balance as a payment so paidAmount, the ledger and finance stay consistent
+    const remaining = Math.round(((bill.grandTotal || 0) - paid) * 100) / 100;
+    if (remaining > 0) {
+      bill.payments.push({ amount: remaining, date: new Date(), mode: "Cash", notes: "Marked paid by admin", createdAt: new Date() });
+      bill.paidAmount = Math.round((paid + remaining) * 100) / 100;
+      await Transaction.create({
+        owner: bill.owner,
+        party: bill.party,
+        bill: bill._id,
+        type: "income",
+        category: "Bill Payment",
+        amount: remaining,
+        paymentMode: "cash",
+        date: new Date(),
+        description: `Marked paid by admin — #${bill.billNumber || bill._id}`,
+      });
+      if (bill.party) {
+        await Party.updateOne({ _id: bill.party, owner: bill.owner }, { $inc: { balance: -remaining } });
+      }
+    }
+    bill.status = "paid";
+    await bill.save();
 
     return res.json({ success: true, bill });
   } catch (e) {

@@ -1,4 +1,5 @@
 const GarageBill = require("../models/GarageBill");
+const { stripProtected } = require("../utils/sanitizeBody");
 const GarageVehicle = require("../models/GarageVehicle");
 const dayjs = require("dayjs");
 
@@ -49,7 +50,7 @@ async function listVehicles(req, res, next) {
 
 async function addVehicle(req, res, next) {
   try {
-    const data = { ...req.body, owner: req.user.id };
+    const data = { ...stripProtected(req.body), owner: req.user.id };
     const vehicle = await GarageVehicle.create(data);
     return res.json({ success: true, vehicle });
   } catch (e) {

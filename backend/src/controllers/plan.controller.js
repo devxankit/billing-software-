@@ -21,12 +21,23 @@ async function getAvailablePlans(req, res, next) {
 
 async function subscribeToPlan(req, res, next) {
   try {
-    const { planId, paymentMode, transactionId } = req.body;
+    const { planId, paymentMode } = req.body;
     const plan = await SoftwarePlan.findById(planId);
     if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
 
+    // Paid plans must go through Razorpay (create-order → verify-payment)
+    if ((Number(plan.price) || 0) > 0) {
+      return res.status(402).json({ success: false, message: "Payment required for this plan" });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // A free plan can be claimed only once per account
+    const alreadyClaimed = await SoftwareSale.exists({ owner: user._id, planName: plan.name, totalAmount: 0 });
+    if (alreadyClaimed) {
+      return res.status(409).json({ success: false, message: "This free plan has already been used on your account" });
+    }
 
     let start = new Date();
     if (user.subscriptionActive && user.subscriptionExpiry && new Date(user.subscriptionExpiry) > start) {
@@ -61,7 +72,7 @@ async function subscribeToPlan(req, res, next) {
       paymentHistory: [{
         amount: total,
         mode: paymentMode || "upi",
-        transactionId: transactionId || "MOCK_TXN_" + Date.now()
+        transactionId: `FREE_${user._id}_${Date.now()}`
       }]
     });
 
@@ -98,7 +109,10 @@ async function createOrder(req, res, next) {
 
     let order;
     try {
-      order = await razorpayUtil.createRazorpayOrder(total, `receipt_${Date.now()}`);
+      order = await razorpayUtil.createRazorpayOrder(total, `receipt_${Date.now()}`, {
+        planId: String(plan._id),
+        userId: String(req.user.id),
+      });
     } catch (rzpErr) {
       console.error("Razorpay Error Details:", rzpErr);
       return res.status(500).json({ 
@@ -133,9 +147,31 @@ async function verifyPayment(req, res, next) {
       return res.status(400).json({ success: false, message: "Invalid payment signature" });
     }
 
-    // Reuse existing subscription logic
     const plan = await SoftwarePlan.findById(planId);
     if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
+
+    // The signed order must have been created for this user, this plan and this plan's price
+    let order;
+    try {
+      order = await razorpayUtil.fetchRazorpayOrder(razorpay_order_id);
+    } catch (fetchErr) {
+      console.error("Razorpay order fetch failed:", fetchErr);
+      return res.status(502).json({ success: false, message: "Could not confirm payment with Razorpay. Please contact support." });
+    }
+    const expectedPaise = Math.round((Number(plan.price) || 0) * 100);
+    if (
+      order?.notes?.planId !== String(plan._id) ||
+      order?.notes?.userId !== String(req.user.id) ||
+      Number(order?.amount) !== expectedPaise
+    ) {
+      return res.status(400).json({ success: false, message: "Payment does not match the selected plan" });
+    }
+
+    // Each payment can activate a subscription only once
+    const alreadyUsed = await SoftwareSale.exists({ "paymentHistory.transactionId": razorpay_payment_id });
+    if (alreadyUsed) {
+      return res.status(409).json({ success: false, message: "This payment has already been applied" });
+    }
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });

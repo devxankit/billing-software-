@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
 
   // Summary Banner
   summaryBanner: { backgroundColor: '#FFB800', color: '#000', textAlign: 'center', padding: 8, fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 2 },
-  summaryBannerGarage: { backgroundColor: '#FFB800', color: '#000', textAlign: 'left', paddingVertical: 6, paddingHorizontal: 10, fontWeight: 'bold', fontSize: 9, borderRadius: 2, marginBottom: 8 },
+  summaryBannerGarage: { backgroundColor: '#FFB800', color: '#000', textAlign: 'center', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 10, fontWeight: 'bold', fontSize: 9, borderRadius: 2, marginBottom: 8 },
 
   // Table
   tableHeader: { 

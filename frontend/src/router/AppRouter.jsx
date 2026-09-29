@@ -1,12 +1,12 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Suspense, lazy, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
 import ScrollToTop from '../components/ScrollToTop'
 
 // Layouts
 import AuthLayout     from '../layouts/AuthLayout'
 import MainLayout     from '../layouts/MainLayout'
+import PageLoader from '../components/PageLoader'
 import ProtectedRoute from './ProtectedRoute'
 
 // Auth pages (eager)
@@ -83,13 +83,6 @@ const ReferralManagement = lazy(() => import('../pages/admin/ReferralManagement'
 const NotificationList  = lazy(() => import('../pages/notifications/NotificationList'))
 const AdminProfile      = lazy(() => import('../pages/admin/AdminProfile'))
 
-// Loader fallback
-const PageLoader = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-    <Loader2 size={28} color="var(--primary)" style={{ animation: 'spin 0.8s linear infinite' }} />
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </div>
-)
 
 export default function AppRouter() {
   const { isAuthenticated, hasRole, user, loading } = useAuth()

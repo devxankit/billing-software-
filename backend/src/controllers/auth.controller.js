@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const { isTestPhone } = require("../../utils/otpStore");
 const otpService = require("../services/otp.service");
 const tokenService = require("../services/token.service");
 const smsService = require("../services/sms.service");
@@ -60,24 +61,25 @@ async function sendOtp(req, res, next) {
       return res.status(400).json({ success: false, message: "Invalid phone" });
     }
 
-      console.log(`[AUTH CONTROLLER DEBUG] sendOtp called for phone: ${phone}`);
-      const { otp, ttlSeconds } = otpService.issue(phone);
-      console.log(`[AUTH CONTROLLER DEBUG] OTP generated for ${phone}: ${otp}, TTL: ${ttlSeconds}`);
-      
+      const issued = otpService.issue(phone);
+      if (issued.error === "RATE_LIMITED") {
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${issued.retryAfterSeconds} seconds before requesting another OTP.`,
+          retryAfterSeconds: issued.retryAfterSeconds,
+        });
+      }
+      const { otp, ttlSeconds } = issued;
+
       let smsResult = null;
-      console.log(`[AUTH CONTROLLER DEBUG] Current NODE_ENV: ${process.env.NODE_ENV}`);
-      
-      if (process.env.NODE_ENV !== 'production') {
-        // In dev, wait for result to debug
-        console.log(`[AUTH CONTROLLER DEBUG] Waiting for SMS result synchronously...`);
-        smsResult = await smsService.sendOtpSms(phone, otp);
-        console.log(`[AUTH CONTROLLER DEBUG] SMS Result received:`, JSON.stringify(smsResult));
-      } else {
-        // In prod, fire-and-forget
-        console.log(`[AUTH CONTROLLER DEBUG] Firing SMS asynchronously...`);
-        smsService.sendOtpSms(phone, otp)
-          .then(result => console.log(`[AUTH CONTROLLER DEBUG] Async SMS Success:`, JSON.stringify(result)))
-          .catch(e => console.error(`[AUTH CONTROLLER ERROR] Async SMS Failed:`, e.message));
+      if (!isTestPhone(phone)) {
+        if (process.env.NODE_ENV !== 'production') {
+          // In dev, wait for the result to surface SMS errors
+          smsResult = await smsService.sendOtpSms(phone, otp);
+        } else {
+          smsService.sendOtpSms(phone, otp)
+            .catch(e => console.error(`[AUTH] Async SMS failed:`, e.message));
+        }
       }
 
     const user = await User.findOne({ phone });
@@ -88,7 +90,8 @@ async function sendOtp(req, res, next) {
       message: "OTP sent", 
       ttlSeconds,
       isNewUser,
-      ...(process.env.NODE_ENV !== 'production' ? { otp, smsResult } : {})
+      // Never echo the OTP unless explicitly enabled for local testing — whatever NODE_ENV says
+      ...(process.env.OTP_DEBUG_ECHO === 'true' ? { otp, smsResult } : {})
     });
   } catch (e) {
     return next(e);
@@ -100,16 +103,23 @@ async function verifyOtp(req, res, next) {
     const phone = sanitizePhone(req.body?.phone);
     const otp = sanitizeOtp(req.body?.otp);
     if (phone.length !== 10) {
-      return res.status(400).json({ success: false, message: "Invalid phone" });
+      return res.status(400).json({ success: false, code: "INVALID_PHONE", message: "Invalid phone number" });
     }
     if (otp.length !== 6) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({ success: false, code: "INVALID_OTP_FORMAT", message: "Please enter a valid 6-digit OTP" });
     }
 
-    const ok = otpService.verify(phone, otp);
+    const verification = otpService.verify(phone, otp);
 
-    if (!ok) {
-      return res.status(401).json({ success: false, message: "Invalid OTP" });
+    if (!verification.valid) {
+      const isExpired = verification.reason === "EXPIRED" || verification.reason === "NOT_FOUND" || verification.reason === "MAX_ATTEMPTS";
+      return res.status(400).json({
+        success: false,
+        code: isExpired ? "OTP_EXPIRED" : "OTP_INVALID",
+        reason: verification.reason,
+        message: verification.message || (isExpired ? "OTP has expired. Please request a new OTP." : "Invalid OTP. Please enter the correct code."),
+        attemptsLeft: verification.attemptsLeft
+      });
     }
 
     const user = await User.findOneAndUpdate(
@@ -229,16 +239,23 @@ async function me(req, res, next) {
 async function setRole(req, res, next) {
   try {
     const role = String(req.body?.role || "").toLowerCase();
-    if (!["admin", "transport", "garage"].includes(role)) {
+    // Admin accounts are created by the admin panel only — never self-assigned
+    if (!["transport", "garage"].includes(role)) {
       return res.status(400).json({ success: false, message: "Invalid role" });
     }
 
+    const existing = await User.findOne({ phone: req.user.phone }).select("role");
+    if (!existing) return res.status(404).json({ success: false, message: "User not found" });
+    // Role is chosen once during signup; switching later would mix transport and garage data
+    if (existing.role && existing.role !== role) {
+      return res.status(403).json({ success: false, message: "Account role is already set and cannot be changed" });
+    }
+
     const user = await User.findOneAndUpdate(
-      { phone: req.user.phone },
+      { _id: existing._id },
       { $set: { role } },
       { new: true, upsert: false }
     ).populate('planId');
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const accessToken = tokenService.signAccessToken(user);
     return res.json({ success: true, user: userDto(user), accessToken });

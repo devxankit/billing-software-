@@ -40,8 +40,19 @@ export default function TripHistoryLogs() {
     fetchTrips()
   }, [fetchTrips])
 
+  // Same status the transporter sees on their trips page: Billed / In Draft / Pending
+  const getTripStatus = (trip) => {
+     const status = trip.status?.toLowerCase()
+     if (status === 'cancelled') return 'cancelled'
+     if (trip.billed) return 'billed'
+     if (trip.billId) return 'in draft'
+     return 'pending'
+  }
+
   const getStatusColor = (s) => {
      const status = s?.toLowerCase()
+     if (status === 'billed') return { bg: '#DCFCE7', text: '#16A34A', icon: CheckCircle2 }
+     if (status === 'in draft') return { bg: '#EEF2FF', text: '#4F46E5', icon: Clock }
      if (status === 'completed') return { bg: '#DCFCE7', text: '#16A34A', icon: CheckCircle2 }
      if (status === 'ongoing' || status === 'in transit' || status === 'active') return { bg: '#DBEAFE', text: '#2563EB', icon: Truck }
      if (status === 'cancelled') return { bg: '#FEE2E2', text: '#EF4444', icon: Clock }
@@ -97,10 +108,8 @@ export default function TripHistoryLogs() {
             onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
           >
             <option value="">All Status</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="billed">Billed</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <button className="btn btn-ghost" style={{ height: 44 }} onClick={() => { setSearch(''); setStatusFilter(''); setPage(1); }}>Reset</button>
@@ -115,14 +124,15 @@ export default function TripHistoryLogs() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: 'var(--bg-alt)', borderBottom: '1px solid var(--border)' }}>
               <tr>
-                {['Trip ID / Date', 'Business / Owner', 'Vehicle & Route', 'Total Value'].map(h => (
+                {['Trip ID / Date', 'Business / Owner', 'Vehicle & Route', 'Status', 'Total Value'].map(h => (
                    <th key={h} style={{ padding: '13px 24px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filteredTrips.map(trip => {
-                const colors = getStatusColor(trip.status)
+                const tripStatus = getTripStatus(trip)
+                const colors = getStatusColor(tripStatus)
                 return (
                   <tr key={trip._id} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
                     <td style={{ padding: '16px 24px' }}>
@@ -142,6 +152,15 @@ export default function TripHistoryLogs() {
                          {trip.source} <ArrowRight size={10} /> {trip.destination}
                       </div>
                     </td>
+                    <td style={{ padding: '16px 24px' }}>
+                      <div style={{ 
+                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 99,
+                        background: colors.bg, color: colors.text, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
+                      }}>
+                        <colors.icon size={12} />
+                        {tripStatus}
+                      </div>
+                    </td>
                     <td style={{ padding: '16px 24px', fontWeight: 900, fontSize: '1rem', color: '#111' }}>
                        ₹{trip.amount?.toLocaleString() || 0}
                     </td>
@@ -150,7 +169,7 @@ export default function TripHistoryLogs() {
               })}
               {!loading && filteredTrips.length === 0 && (
                 <tr>
-                   <td colSpan="4" style={{ padding: '80px 24px', textAlign: 'center' }}>
+                   <td colSpan="5" style={{ padding: '80px 24px', textAlign: 'center' }}>
                       <MapPin size={48} color="var(--text-muted)" style={{ margin: '0 auto 16px', opacity: 0.3 }} />
                       <h3 style={{ fontWeight: 800, color: 'var(--text-secondary)' }}>No trip records found</h3>
                       <p style={{ color: 'var(--text-muted)' }}>Trip data will appear once transporters log their route information.</p>

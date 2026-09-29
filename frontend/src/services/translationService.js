@@ -1,11 +1,13 @@
 import { apiClient } from "../api/apiClient";
-import { getCachedTranslation, setCachedTranslation } from "../utils/translationCache";
+import { getCachedTranslation, getCachedTranslationSync, setCachedTranslation } from "../utils/translationCache";
 
 let queue = [];
 let isProcessing = false;
-const BATCH_SIZE = 10;
-const WAIT_WINDOW = 100; 
-const MIN_INTERVAL = 200; 
+// Google Translate accepts up to 128 segments per request; send big batches
+// so a page's strings arrive in one round-trip instead of many small ones.
+const BATCH_SIZE = 100;
+const WAIT_WINDOW = 50;
+const MIN_INTERVAL = 0;
 
 async function processQueue() {
   if (isProcessing || queue.length === 0) return;
@@ -49,7 +51,7 @@ async function processQueue() {
         items.forEach(item => item.resolve(item.text));
       }
 
-      await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL));
+      if (MIN_INTERVAL) await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL));
     }
   }
 
@@ -59,6 +61,9 @@ async function processQueue() {
 export async function translateText(text, targetLang, sourceLang = "en") {
   if (!text || String(text).trim() === "") return text;
   if (targetLang === sourceLang) return text;
+
+  const syncCached = getCachedTranslationSync(text, sourceLang, targetLang);
+  if (syncCached) return syncCached;
 
   const cached = await getCachedTranslation(text, sourceLang, targetLang);
   if (cached) return cached;
@@ -116,4 +121,15 @@ export async function translateObject(obj, targetLang, sourceLang = "en", keysTo
   }
 
   return clonedObj;
+}
+
+// Synchronous cache lookup so pages can render already-translated text on first paint
+export function translateBatchSync(texts, targetLang, sourceLang = "en") {
+  const map = {};
+  if (!Array.isArray(texts) || targetLang === sourceLang) return map;
+  texts.forEach(t => {
+    const cached = getCachedTranslationSync(t, sourceLang, targetLang);
+    if (cached) map[t] = cached;
+  });
+  return map;
 }

@@ -460,7 +460,7 @@ export default function SoftwareSales() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: 'var(--bg-alt)', borderBottom: '1px solid var(--border)' }}>
               <tr>
-                {[isTransport ? 'Transporter / Business' : 'Garage / Business', 'Total Deal', 'Paid', 'Subscription', 'Status', 'Actions'].map(h => (
+                {[isTransport ? 'Transporter / Business' : 'Garage / Business', 'Total Deal', 'Paid', 'Subscription', 'Actions'].map(h => (
                    <th key={h} style={{ padding: '14px 24px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
@@ -492,13 +492,6 @@ export default function SoftwareSales() {
                      <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#EF4444', marginTop: 2 }}>Ends: {sale.expiryDate}</div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
-                     <span style={{
-                        padding: '4px 10px', borderRadius: 99, fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
-                        background: sale.status === 'Paid' ? '#D1FAE5' : (sale.status === 'Partial' || sale.status === 'partial' ? '#FEF3C7' : '#FEE2E2'),
-                        color: sale.status === 'Paid' ? '#059669' : (sale.status === 'Partial' || sale.status === 'partial' ? '#D97706' : '#EF4444')
-                     }}>{sale.status}</span>
-                  </td>
-                  <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', gap: 8 }}>
                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setHistoryModal(sale)} title="Payment History"><History size={16} /></button>
                        <button className="btn btn-sm btn-icon" style={{ background: '#FEE2E2', color: '#EF4444', border: 'none' }} onClick={() => deleteSoftwareSale(sale.id)}><Trash2 size={16} /></button>
@@ -508,7 +501,7 @@ export default function SoftwareSales() {
               ))}
               {paginated.length === 0 && (
                 <tr>
-                   <td colSpan="6" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>No sales records found.</td>
+                   <td colSpan="5" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600 }}>No sales records found.</td>
                 </tr>
               )}
             </tbody>

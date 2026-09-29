@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 require('dotenv').config({ path: '.env' });
+
+if (!process.env.ADMIN_SEED_PASSWORD) {
+  console.error('Set ADMIN_SEED_PASSWORD in backend/.env before running this script.');
+  process.exit(1);
+}
 const crypto = require('crypto');
 
 function hashPassword(password) {
@@ -13,7 +18,7 @@ async function run() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     const email = 'admin@trans.com';
-    const password = 'admin123';
+    const password = process.env.ADMIN_SEED_PASSWORD;
     const h = hashPassword(password);
     
     // Use upsert to create or update

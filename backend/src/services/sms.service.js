@@ -9,9 +9,6 @@ async function sendSms(phone, message, options = {}) {
   const apiKey = process.env.SMSINDIAHUB_API_KEY;
   const senderId = options.senderId || process.env.SMSINDIAHUB_SENDER_ID || "SMSHUB";
 
-  console.log(`[SMS SERVICE DEBUG] Starting sendSms to ${phone}`);
-  console.log(`[SMS SERVICE DEBUG] Using Sender ID: ${senderId}, API Key exists: ${!!apiKey}`);
-
   if (!apiKey) {
     console.log("------------------------------------------");
     console.log(`[MOCK SMS] To: ${phone}`);
@@ -27,17 +24,9 @@ async function sendSms(phone, message, options = {}) {
     if (options.peid) url += `&peid=${options.peid}`;
     if (options.templateId) url += `&templateid=${options.templateId}`;
     
-    console.log(`[SMS SERVICE DEBUG] Request URL: ${url}`);
-    
+    // Never log or return `url`: it contains the API key and the message (OTP)
     const response = await axios.get(url);
-    console.log(`[SMS SERVICE DEBUG] Response Status: ${response.status}`);
-    console.log(`[SMS SERVICE DEBUG] Response Data:`, response.data);
-    
-    return { 
-      success: true, 
-      response: response.data,
-      debugUrl: url 
-    };
+    return { success: true, response: response.data };
   } catch (error) {
     console.error(`[SMS SERVICE ERROR] Request Failed! Error: ${error.message}`);
     if (error.response) {
@@ -49,16 +38,7 @@ async function sendSms(phone, message, options = {}) {
 }
 
 async function sendOtpSms(phone, otp) {
-  console.log(`[SMS SERVICE DEBUG] sendOtpSms called for phone: ${phone}, otp: ${otp}`);
-  // Skip actual SMS for specific numbers
-  const testPhones = ["7458947838", "6260491554", "7777777777"];
-  if (testPhones.includes(phone)) {
-    console.log(`[SMS SERVICE DEBUG] Skipping actual SMS for special number: ${phone}`);
-    return { success: true, message: "Special number, SMS skipped" };
-  }
-
   const message = `Welcome to the trans powered by Appzeto. Your OTP for registration is ${otp}.BGADEC`;
-  console.log(`[SMS SERVICE DEBUG] Formatted Message: ${message}`);
   
   return sendSms(phone, message, {
     senderId: "BGADEC",

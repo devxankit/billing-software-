@@ -5,6 +5,7 @@ import { Wrench, ArrowLeft, CheckCircle2, Loader2, ChevronDown } from 'lucide-re
 import { useVehicles } from '../../context/VehicleContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import carModelsData from '../../data/car_models.json'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 // Pre-process car data
 const UNIQUE_BRANDS = [...new Set(carModelsData.map(item => item.brand))].sort();
@@ -233,11 +234,11 @@ export default function AddGarageVehicle() {
             <Field label={getTranslatedText('Party Name')} error={errors.customerName}>
               <input 
                 {...register('customerName', {
-                  pattern: { value: /^[a-zA-Z\s]*$/, message: 'Only letters and spaces allowed' }
+                  pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters allowed' }
                 })} 
                 onBlur={e => setValue('customerName', formatName(e.target.value))}
                 onInput={e => {
-                  e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+                  e.target.value = stripNonPersonName(e.target.value)
                   setValue('customerName', e.target.value)
                 }}
                 placeholder={getTranslatedText('Owner Name')} 

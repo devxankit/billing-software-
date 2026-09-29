@@ -1,7 +1,37 @@
 const DB_NAME = "TranslationCache";
 const STORE_NAME = "translations";
 const DB_VERSION = 1;
-const TTL = 24 * 60 * 60 * 1000; // 24 hours
+const TTL = 30 * 24 * 60 * 60 * 1000; // 30 days — UI strings rarely change
+
+// In-memory layer so repeat lookups (and first paint) don't wait on IndexedDB
+const memoryCache = new Map();
+
+function getCacheId(text, sourceLang, targetLang) {
+  try {
+    return `${sourceLang}_${targetLang}_${btoa(unescape(encodeURIComponent(text.trim())))}`;
+  } catch (e) {
+    return `${sourceLang}_${targetLang}_${text.trim().substring(0, 50)}`;
+  }
+}
+
+export function getCachedTranslationSync(text, sourceLang, targetLang) {
+  if (!text || typeof text !== "string") return null;
+  const id = getCacheId(text, sourceLang, targetLang);
+  if (memoryCache.has(id)) return memoryCache.get(id);
+  try {
+    const localCached = localStorage.getItem(`tx_${id}`);
+    if (localCached) {
+      const parsed = JSON.parse(localCached);
+      if (Date.now() < parsed.expiry) {
+        memoryCache.set(id, parsed.translation);
+        return parsed.translation;
+      }
+    }
+  } catch (e) {
+    // Ignore
+  }
+  return null;
+}
 
 let dbPromise = null;
 
@@ -27,12 +57,7 @@ function getDB() {
 
 export async function getCachedTranslation(text, sourceLang, targetLang) {
   if (!text) return null;
-  let id;
-  try {
-    id = `${sourceLang}_${targetLang}_${btoa(unescape(encodeURIComponent(text.trim())))}`;
-  } catch (e) {
-    id = `${sourceLang}_${targetLang}_${text.trim().substring(0, 50)}`;
-  }
+  const id = getCacheId(text, sourceLang, targetLang);
 
   try {
     const db = await getDB();
@@ -47,6 +72,7 @@ export async function getCachedTranslation(text, sourceLang, targetLang) {
 
     if (cached) {
       if (Date.now() < cached.expiry) {
+        memoryCache.set(id, cached.translation);
         return cached.translation;
       } else {
         const deleteTx = db.transaction(STORE_NAME, "readwrite");
@@ -77,14 +103,10 @@ export async function getCachedTranslation(text, sourceLang, targetLang) {
 export async function setCachedTranslation(text, translation, sourceLang, targetLang) {
   if (!text || !translation || text.trim() === translation.trim()) return;
 
-  let id;
-  try {
-    id = `${sourceLang}_${targetLang}_${btoa(unescape(encodeURIComponent(text.trim())))}`;
-  } catch (e) {
-    id = `${sourceLang}_${targetLang}_${text.trim().substring(0, 50)}`;
-  }
+  const id = getCacheId(text, sourceLang, targetLang);
   
   const expiry = Date.now() + TTL;
+  memoryCache.set(id, translation);
   const item = { id, translation, expiry };
 
   try {

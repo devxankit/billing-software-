@@ -51,7 +51,7 @@ export default function ReferralCodeSetup() {
   }
 
   return (
-    <div className="animate-fadeIn" style={{ maxWidth: 440, margin: '0 auto', paddingBottom: isFocused ? '40vh' : 20, transition: 'padding 0.3s ease', position: 'relative' }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 440, margin: '0 auto', paddingBottom: isFocused ? '40vh' : 0, transition: 'padding 0.3s ease', position: 'relative' }}>
       {/* Back Button */}
       <button 
         id="btn-back-referral"

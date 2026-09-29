@@ -21,13 +21,17 @@ async function refreshAccessToken() {
   const isAdmin = window.location.pathname.startsWith('/admin')
   const endpoint = isAdmin ? '/admin/auth/refresh' : '/auth/refresh'
 
+  const refreshToken = localStorage.getItem('refresh_token')
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
   const client = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
   })
   
-  const refreshToken = localStorage.getItem('refresh_token')
   const { data } = await client.post(endpoint, { refreshToken })
   return data
 }
@@ -44,7 +48,13 @@ apiClient.interceptors.response.use(
     }
 
     // Skip refresh for auth endpoints to preserve original validation messages
-    if (originalRequest.url?.match(/\/auth\/(login|send-otp|verify-otp)/)) {
+    if (originalRequest.url?.match(/\/auth\/(login|send-otp|verify-otp|refresh)/)) {
+      throw error
+    }
+
+    // Only attempt refresh if a refresh token exists
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (!refreshToken) {
       throw error
     }
 

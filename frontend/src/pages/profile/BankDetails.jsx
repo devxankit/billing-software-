@@ -50,7 +50,7 @@ export default function BankDetails() {
   }
 
   return (
-    <div className="page-wrapper animate-fadeIn" style={{ maxWidth: 540, margin: '0 auto', paddingBottom: 300 }}>
+    <div className="page-wrapper keyboard-pad animate-fadeIn" style={{ maxWidth: 540, margin: '0 auto' }}>
       {/* Back header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <button onClick={() => navigate('/profile')} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>

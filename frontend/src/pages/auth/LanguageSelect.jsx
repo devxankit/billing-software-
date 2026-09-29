@@ -58,7 +58,7 @@ export default function LanguageSelect() {
         } else if (!user?.setupComplete) {
           navigate(`/register/${user.role}`)
         } else {
-          navigate('/transport/dashboard', { replace: true })
+          navigate('/dashboard', { replace: true })
         }
       } else {
         navigate('/login', { replace: true })
@@ -73,12 +73,12 @@ export default function LanguageSelect() {
   return (
     <div className="animate-fadeIn" style={{ 
       width: '100%', 
-      maxWidth: '100%', 
+      maxWidth: 480, 
       margin: '0 auto',
-      padding: '8px 0',
+      padding: 0,
     }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 32, position: 'relative' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24, position: 'relative' }}>
         <button 
           onClick={() => navigate('/otp')}
           style={{ position: 'absolute', left: 0, top: 0, background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 700 }}
@@ -106,8 +106,8 @@ export default function LanguageSelect() {
         display: 'grid', 
         gridTemplateColumns: 'repeat(2, 1fr)', 
         gap: 12,
-        marginBottom: 32,
-        maxHeight: '45vh',
+        marginBottom: 24,
+        maxHeight: '46vh',
         overflowY: 'auto',
         padding: '4px',
         marginRight: '-4px'

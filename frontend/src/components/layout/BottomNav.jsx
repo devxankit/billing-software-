@@ -43,6 +43,51 @@ export default function BottomNav() {
 
 
 
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
+
+  useEffect(() => {
+    const isInputElement = (el) => el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
+
+    const onFocusIn = (e) => {
+      if (isInputElement(e.target)) {
+        setIsKeyboardOpen(true)
+      }
+    }
+
+    const onFocusOut = () => {
+      setTimeout(() => {
+        if (!isInputElement(document.activeElement)) {
+          setIsKeyboardOpen(false)
+        }
+      }, 150)
+    }
+
+    const onViewportResize = () => {
+      if (window.visualViewport) {
+        const heightDiff = window.innerHeight - window.visualViewport.height
+        if (heightDiff > 150) {
+          setIsKeyboardOpen(true)
+        } else if (!isInputElement(document.activeElement)) {
+          setIsKeyboardOpen(false)
+        }
+      }
+    }
+
+    window.addEventListener('focusin', onFocusIn)
+    window.addEventListener('focusout', onFocusOut)
+    window.visualViewport?.addEventListener('resize', onViewportResize)
+
+    return () => {
+      window.removeEventListener('focusin', onFocusIn)
+      window.removeEventListener('focusout', onFocusOut)
+      window.visualViewport?.removeEventListener('resize', onViewportResize)
+    }
+  }, [])
+
+  if (isKeyboardOpen) {
+    return null
+  }
+
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Bottom navigation">
       <div className="bottom-nav-inner">

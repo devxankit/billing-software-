@@ -66,18 +66,28 @@ export function AuthProvider({ children }) {
     let cancelled = false
 
     async function hydrate() {
+      const token = localStorage.getItem('access_token')
+      const refreshToken = localStorage.getItem('refresh_token')
+
       try {
         const saved = localStorage.getItem('billing_user')
-        const token = localStorage.getItem('access_token')
-        if (saved && token) {
+        if (saved && (token || refreshToken)) {
           setUser(JSON.parse(saved))
           // Optimistic UI: Stop loading immediately if we have cached data
           if (!cancelled) setLoading(false)
-        } else if (saved) {
-          setUser(JSON.parse(saved))
+        } else if (!token && !refreshToken) {
+          localStorage.removeItem('billing_user')
+          setUser(null)
         }
       } catch (_) {
         localStorage.removeItem('billing_user')
+      }
+
+      // If user has no tokens or is on public login/auth pages, do not make background auth API calls
+      const isPublicAuthPage = ['/login', '/admin', '/admin-login', '/otp'].includes(window.location.pathname)
+      if ((!token && !refreshToken) || isPublicAuthPage) {
+        if (!cancelled) setLoading(false)
+        return
       }
 
       try {
@@ -111,10 +121,12 @@ export function AuthProvider({ children }) {
     setSending(true)
     setError('')
     try {
-      return await sendOtp(phone)
+      const res = await sendOtp(phone)
+      return res
     } catch (e) {
-      setError('Failed to send OTP. Please try again.')
-      return { success: false }
+      const msg = e.response?.data?.message || 'Failed to send OTP. Please try again.'
+      setError(msg)
+      return { success: false, message: msg }
     } finally {
       setSending(false)
     }
@@ -137,9 +149,20 @@ export function AuthProvider({ children }) {
       }
       return res
     } catch (e) {
-      const msg = e.response?.data?.message || 'Verification failed. Please try again.'
+      const data = e.response?.data
+      const msg = data?.message || 'Verification failed. Please try again.'
+      const code = data?.code
+      const reason = data?.reason
       setError(msg)
-      return { success: false, message: msg }
+      return {
+        success: false,
+        message: msg,
+        code,
+        reason,
+        isExpired: code === 'OTP_EXPIRED' || reason === 'EXPIRED' || reason === 'NOT_FOUND' || reason === 'MAX_ATTEMPTS',
+        isInvalid: code === 'OTP_INVALID' || reason === 'INVALID',
+        attemptsLeft: data?.attemptsLeft,
+      }
     } finally {
       setVerifying(false)
     }

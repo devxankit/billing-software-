@@ -5,6 +5,7 @@ import { Wrench, User, MapPin, Phone, Loader2, ArrowRight, FileText, Image, File
 import { useAuth } from '../../context/AuthContext'
 import logo from '../../assets/trans-logo.png'
 import { uploadSingleFile } from '../../api/uploadApi'
+import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 
 function Field({ label, error, children, required, sublabel }) {
   return (
@@ -200,7 +201,7 @@ export default function GarageRegistration() {
       const res = await completeGarageSetup(formattedData)
       if (res.success) {
         sessionStorage.removeItem('draft_garage_setup')
-        navigate('/dashboard', { replace: true })
+        navigate('/subscription', { replace: true })
       } else {
         setLoading(false)
         alert(res.message || 'Setup failed. Please try again.')
@@ -213,38 +214,52 @@ export default function GarageRegistration() {
   }
 
   return (
-    <div className="animate-fadeIn" style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 24 }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+    <div className="animate-fadeIn setup-page-container" style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 24 }}>
+      {/* Fixed Header */}
+      <div className="setup-header-fixed" style={{ 
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        background: 'rgba(248, 250, 252, 0.98)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        paddingTop: 10,
+        paddingBottom: 14,
+        marginBottom: 16,
+        textAlign: 'center',
+        borderBottom: '1px solid #E2E8F0',
+        borderRadius: '0 0 20px 20px',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+      }}>
         <div style={{ 
-          width: 80, height: 80, borderRadius: 24, background: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1.5px solid #F1F5F9'
+          width: 52, height: 52, borderRadius: 18, background: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.06)', border: '1.5px solid #F1F5F9'
         }}>
           <img src={logo} alt="Logo" style={{ width: '75%', height: '75%', objectFit: 'contain' }} />
         </div>
         <h2 style={{ 
-          fontSize: '1.5rem', fontWeight: 950, color: '#0F172A', letterSpacing: '-0.04em', marginBottom: 4,
+          fontSize: '1.35rem', fontWeight: 950, color: '#0F172A', letterSpacing: '-0.03em', marginBottom: 2,
           background: 'linear-gradient(to right, #0F172A, #4C1D95)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
         }}>
           Setup Your Garage
         </h2>
         
         {/* Progress Dots */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 1 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 2 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 3 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 1 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 2 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 3 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
         </div>
         
-        <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginTop: 10 }}>
+        <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginTop: 8, marginBottom: 0 }}>
            {step === 1 && 'Basic workshop information'}
            {step === 2 && 'KYC & Bank details'}
            {step === 3 && 'Upload required documents'}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ 
+      <form onSubmit={handleSubmit(onSubmit)} className="setup-scrollable-form" style={{ 
         background: 'white', padding: '24px 20px', borderRadius: 28, 
         border: '1px solid #F1F5F9', boxShadow: '0 20px 50px rgba(0,0,0,0.03)',
         position: 'relative'
@@ -263,10 +278,10 @@ export default function GarageRegistration() {
                   <input 
                     {...register('name', { 
                       required: 'Owner name is required',
-                      pattern: { value: /^[a-zA-Z\s]+$/, message: 'Only letters are allowed' }
+                      pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters are allowed' }
                     })} 
                     onInput={(e) => { 
-                      e.target.value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      e.target.value = stripNonPersonName(e.target.value);
                       e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase()); 
                     }}
                     placeholder="Full Name" className="form-input" style={{ borderRadius: 12, height: 44, fontSize: '0.875rem' }} 
@@ -327,6 +342,10 @@ export default function GarageRegistration() {
                     required: 'Aadhar No is required',
                     pattern: { value: /^[0-9]{12}$/, message: 'Invalid Aadhar' }
                   })} 
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={12}
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 12)}
                   placeholder="1234 5678 9012" className="form-input" style={{ borderRadius: 12, height: 44 }} />
                 </div>

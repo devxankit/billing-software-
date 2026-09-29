@@ -11,6 +11,9 @@ import { useAuth } from '../../context/AuthContext'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import dayjs from 'dayjs'
 
+// Full amount with 2 decimals (e.g. ₹12,345.50) — never rounded or abbreviated
+const formatINR = (n) => `₹${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 function StatCard({ icon: Icon, label, value, color, bg }) {
   return (
     <div style={{ background: 'white', borderRadius: 20, padding: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -59,8 +62,32 @@ function BillItem({ bill, onClick, getTranslatedText }) {
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F0D2E' }}>₹{(bill.grandTotal || 0).toLocaleString()}</div>
+        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0F0D2E' }}>{formatINR(bill.grandTotal)}</div>
         <div style={{ fontSize: '0.65rem', color: '#9CA3AF', fontWeight: 600 }}>{getTranslatedText('View Detail')}</div>
+      </div>
+    </div>
+  )
+}
+
+function PaymentItem({ entry, onClick, getTranslatedText }) {
+  return (
+    <div
+      onClick={() => onClick(entry.billId)}
+      style={{ background: '#F0FDF4', borderRadius: 18, padding: '12px 16px', border: '1px solid #DCFCE7', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+    >
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <CheckCircle2 size={18} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0F0D2E', marginBottom: 2 }}>
+          {getTranslatedText('Payment Received')}{entry.mode ? ` (${entry.mode})` : ''}
+        </div>
+        <div style={{ fontSize: '0.7rem', color: '#6B7280', fontWeight: 500 }}>
+          {dayjs(entry.date).format('DD MMM, YYYY')} • {entry.billNumber || getTranslatedText('DRAFT')}
+        </div>
+      </div>
+      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#16A34A', textAlign: 'right' }}>
+        + {formatINR(entry.amount)}
       </div>
     </div>
   )
@@ -87,10 +114,34 @@ export default function PartyDetail() {
     'Phone Number', 'Email', 'GSTIN', 'Address Info', 'Transaction History',
     'No Invoices Found', 'Party Not Found', 'Go Back', 'Paid', 'Unpaid', 'Partial',
     'To Pay', 'TBB', 'Draft', 'Items', 'View Detail', 'No Phone', 'No City', 'No GST',
-    'No Address Details', 'DRAFT', 'paid', 'unpaid', 'partial', 'topay', 'tbb', 'draft',
+    'No Address Details', 'DRAFT', 'Payment Received', 'paid', 'unpaid', 'partial', 'topay', 'tbb', 'draft',
     party?.name, party?.city, party?.address, party?.state, party?.pincode,
     ...partyBills.map(b => b.billNumber)
   ])
+
+  // Ledger timeline: every bill plus every individual payment, newest first
+  const ledger = useMemo(() => {
+    const entries = []
+    partyBills.forEach(bill => {
+      const billId = bill._id || bill.id
+      entries.push({ kind: 'bill', key: `bill-${billId}`, date: bill.billingDate || bill.billDate || bill.createdAt, bill })
+      if (bill.status === 'draft') return
+      if (bill.payments?.length) {
+        bill.payments.forEach((p, i) => entries.push({
+          kind: 'payment', key: `pay-${billId}-${p._id || i}`, billId, billNumber: bill.billNumber,
+          date: p.date || p.createdAt || bill.createdAt, amount: p.amount || 0, mode: p.mode,
+        }))
+      } else {
+        // Older bills paid before installments were tracked
+        const paid = bill.paidAmount || (bill.status === 'paid' ? bill.grandTotal : 0) || 0
+        if (paid > 0) entries.push({
+          kind: 'payment', key: `pay-${billId}`, billId, billNumber: bill.billNumber,
+          date: bill.paymentDate || bill.updatedAt || bill.createdAt, amount: paid,
+        })
+      }
+    })
+    return entries.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [partyBills])
 
   const stats = useMemo(() => {
     const validBills = partyBills.filter(b => b.status !== 'draft')
@@ -158,9 +209,9 @@ export default function PartyDetail() {
 
         {/* Stats Grid */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <StatCard icon={TrendingUp} label={getTranslatedText('Total Billed')} value={`₹${stats.total.toLocaleString()}`} color="#7C3AED" bg="#F5F3FF" />
-          <StatCard icon={CheckCircle2} label={getTranslatedText('Amount Paid')} value={`₹${stats.paid.toLocaleString()}`} color="#16A34A" bg="#DCFCE7" />
-          <StatCard icon={Clock} label={getTranslatedText('Pending')} value={`₹${stats.pending.toLocaleString()}`} color="#DC2626" bg="#FEE2E2" />
+          <StatCard icon={TrendingUp} label={getTranslatedText('Total Billed')} value={formatINR(stats.total)} color="#7C3AED" bg="#F5F3FF" />
+          <StatCard icon={CheckCircle2} label={getTranslatedText('Amount Paid')} value={formatINR(stats.paid)} color="#16A34A" bg="#DCFCE7" />
+          <StatCard icon={Clock} label={getTranslatedText('Pending')} value={formatINR(stats.pending)} color="#DC2626" bg="#FEE2E2" />
         </div>
       </div>
 
@@ -207,13 +258,40 @@ export default function PartyDetail() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {partyBills.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', background: 'white', borderRadius: 24, border: '1px dashed #E2E8F0' }}>
-            <Receipt size={32} color="#CBD5E1" style={{ marginBottom: 12 }} />
-            <div style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 600 }}>{getTranslatedText('No Invoices Found')}</div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '44px 20px',
+            background: 'white',
+            borderRadius: 24,
+            border: '1px dashed #CBD5E1',
+            boxSizing: 'border-box',
+            width: '100%'
+          }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: '#F8FAFC',
+              border: '1.5px solid #F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            }}>
+              <Receipt size={28} color="#94A3B8" style={{ display: 'block', margin: 'auto' }} />
+            </div>
+            <div style={{ color: '#64748B', fontSize: '0.85rem', fontWeight: 700 }}>{getTranslatedText('No Invoices Found')}</div>
           </div>
         ) : (
-          partyBills.map(bill => (
-            <BillItem key={bill._id} bill={bill} onClick={(id) => navigate(`/bills/${id}`)} getTranslatedText={getTranslatedText} />
+          ledger.map(entry => entry.kind === 'bill' ? (
+            <BillItem key={entry.key} bill={entry.bill} onClick={(id) => navigate(`/bills/${id}`)} getTranslatedText={getTranslatedText} />
+          ) : (
+            <PaymentItem key={entry.key} entry={entry} onClick={(id) => navigate(`/bills/${id}`)} getTranslatedText={getTranslatedText} />
           ))
         )}
       </div>

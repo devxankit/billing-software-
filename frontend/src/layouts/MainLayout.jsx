@@ -14,7 +14,6 @@ export default function MainLayout() {
   const { sidebarCollapsed, mobileMenuOpen, closeMobileMenu } = useApp()
   const { user } = useAuth()
   const location = useLocation()
-  const isTransport = (localStorage.getItem('view_mode') || 'transport') === 'transport'
 
   // Safety: If somehow a user lands on a path that doesn't match their role
   // (Defense-in-depth in case of manual URL manipulation)
@@ -49,19 +48,13 @@ export default function MainLayout() {
     '/garage/services': { title: t('services'), subtitle: t('service_records_sub') },
     '/transport/expenses': { title: t('daily_expense'), subtitle: t('expenses_sub') },
     '/admin/dashboard': { title: t('admin'), subtitle: t('system_overview') },
-    '/admin/users': { title: t('user_mgmt'), subtitle: t('user_mgmt_sub') },
+    // Pages that render their own heading get no top-header title (avoids a duplicated header)
+    '/admin/users': { title: null, subtitle: null },
     '/admin/billing': { title: t('bills'), subtitle: t('all_system_bills_sub') },
     '/admin/software-sales': { title: null, subtitle: null },
   }
 
   let meta = pageMeta[location.pathname] || { title: 'TRANS', subtitle: null }
-
-  if (location.pathname === '/admin/software-sales') {
-    meta = {
-      title: isTransport ? t('transport') + ' ' + t('software_sales') : t('garage') + ' ' + t('software_sales'),
-      subtitle: t('manage_deals_sub')
-    }
-  }
 
   // Global Navigation: Level 1 pages (Dashboard, main lists) get Hamburger. 
   // Level 2+ pages (Details, Forms) get Back Button.

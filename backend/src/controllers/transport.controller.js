@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
+const { stripProtected } = require("../utils/sanitizeBody");
 const Vehicle = require("../models/Vehicle");
 const Trip = require("../models/Trip");
 const Party = require("../models/Party");
 const TransportBill = require("../models/TransportBill");
 const notificationService = require("../services/notification.service");
+
+// Set by the server only (billing links and generated IDs)
+const TRIP_SERVER_FIELDS = ["billed", "billId", "tripId"];
 
 async function sendTripNotification(trip, action) {
   try {
@@ -34,6 +38,7 @@ async function sendTripNotification(trip, action) {
 
     // ALSO notify the owner (User)
     const User = require("../../models/User");
+
     const owner = await User.findById(trip.owner);
     if (owner && action === "created") {
       await notificationService.sendToUser(owner, {
@@ -134,7 +139,7 @@ async function createVehicle(req, res, next) {
     if (existing) return res.status(400).json({ success: false, message: "This vehicle is already registered" });
 
 
-    const vehicle = await Vehicle.create({ ...req.body, vehicleNumber: cleanNumber, owner: req.user.id });
+    const vehicle = await Vehicle.create({ ...stripProtected(req.body), vehicleNumber: cleanNumber, owner: req.user.id });
     return res.json({ success: true, vehicle });
   } catch (e) {
     console.error("Vehicle Creation Error:", e);
@@ -147,7 +152,7 @@ async function updateVehicle(req, res, next) {
   try {
     const vehicle = await Vehicle.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { $set: req.body },
+      { $set: stripProtected(req.body) },
       { new: true }
     );
     if (!vehicle) return res.status(404).json({ success: false, message: "Vehicle not found" });
@@ -207,8 +212,9 @@ async function listTrips(req, res, next) {
 
 async function createTrip(req, res, next) {
   try {
+    // Billing state is set only by the bill endpoints
     const tripData = { 
-      ...req.body, 
+      ...stripProtected(req.body, TRIP_SERVER_FIELDS), 
       owner: req.user.id,
       vehicle: req.body.vehicleId || req.body.vehicle,
       party: req.body.partyId || req.body.party
@@ -232,10 +238,16 @@ async function createTrip(req, res, next) {
 
 async function updateTrip(req, res, next) {
   try {
+    const existing = await Trip.findOne({ _id: req.params.id, owner: req.user.id }).select("billId billed");
+    if (!existing) return res.status(404).json({ success: false, message: "Trip not found" });
+    // A trip on a bill/draft would drift out of sync with that bill if edited here
+    if (existing.billed || existing.billId) {
+      return res.status(400).json({ success: false, message: "This trip is on a bill. Remove it from the bill before editing." });
+    }
     const trip = await Trip.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { $set: req.body },
-      { new: true }
+      { $set: stripProtected(req.body, TRIP_SERVER_FIELDS) },
+      { returnDocument: "after", runValidators: true }
     );
     if (trip) {
       await sendTripNotification(trip, "updated");
@@ -248,8 +260,12 @@ async function updateTrip(req, res, next) {
 
 async function deleteTrip(req, res, next) {
   try {
-    const trip = await Trip.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
-    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+    const existing = await Trip.findOne({ _id: req.params.id, owner: req.user.id }).select("billId billed");
+    if (!existing) return res.status(404).json({ success: false, message: "Trip not found" });
+    if (existing.billed || existing.billId) {
+      return res.status(400).json({ success: false, message: "This trip is on a bill. Remove it from the bill before deleting." });
+    }
+    await Trip.deleteOne({ _id: existing._id });
     return res.json({ success: true, message: "Trip deleted" });
   } catch (e) {
     return res.status(500).json({ success: false, message: "Delete failed" });

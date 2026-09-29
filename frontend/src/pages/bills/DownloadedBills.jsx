@@ -1,15 +1,52 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Download, ArrowLeft, Calendar, User, Truck, Share2, Eye } from 'lucide-react'
+import { FileText, Download, ArrowLeft, Calendar, User, Truck, Share2, Eye, Loader2 } from 'lucide-react'
 
 import { useBills } from '../../context/BillContext'
+import { useAuth } from '../../context/AuthContext'
+import { TransportInvoice, GarageInvoice } from '../../components/billing/InvoiceTemplates'
+import { buildInvoicePdfFile, invoiceFileName, sharePdfFile } from '../../utils/invoiceShare'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
 import TranslatedText from '../../components/TranslatedText'
 import dayjs from 'dayjs'
 
 export default function DownloadedBills() {
-  const { bills, loaded } = useBills()
+  const { bills, loaded, fetchBill } = useBills()
+  const { user: sessionUser } = useAuth()
   const navigate = useNavigate()
+
+  // Share straight from this list: render the invoice off-screen, turn it into a PDF, open the share sheet
+  const [shareBill, setShareBill] = useState(null)
+  const shareRootRef = useRef(null)
+
+  const startShare = async (bill) => {
+    if (shareBill) return
+    const full = (await fetchBill(bill._id)) || bill
+    setShareBill(full)
+  }
+
+  useEffect(() => {
+    if (!shareBill) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        const file = await buildInvoicePdfFile(shareRootRef.current, invoiceFileName(shareBill))
+        const shareUrl = `${window.location.origin}/view-bill/${shareBill._id}`
+        await sharePdfFile(file, { title: 'Invoice', text: `Invoice #${shareBill.billNumber || ''}
+View/Download here: ${shareUrl}` })
+      } catch (err) {
+        if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+          console.error('PDF Share Error:', err)
+          alert('Failed to share PDF')
+        }
+      } finally {
+        if (!cancelled) setShareBill(null)
+      }
+    }
+    // Wait a frame so the off-screen invoice (and its images) is laid out before capture
+    const timer = setTimeout(run, 300)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [shareBill])
 
   const { getTranslatedText } = usePageTranslation([
     'Downloaded Bills', 'History of invoices exported as PDF', 'No downloaded bills',
@@ -102,14 +139,15 @@ export default function DownloadedBills() {
                 
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button 
-                    onClick={(e) => { e.stopPropagation(); navigate(`/bills/${bill._id}?viewOnly=true&autoShare=true`) }}
+                    onClick={(e) => { e.stopPropagation(); startShare(bill) }}
+                    disabled={!!shareBill}
                     style={{ 
                       width: 32, height: 32, borderRadius: 8, border: 'none', background: '#F0FDF4', 
                       color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' 
                     }}
                     title="Share"
                   >
-                    <Share2 size={14} />
+                    {shareBill?._id === bill._id ? <Loader2 size={14} className="spin" /> : <Share2 size={14} />}
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); navigate(`/bills/${bill._id}?viewOnly=true`) }}
@@ -129,6 +167,18 @@ export default function DownloadedBills() {
           ))}
         </div>
       )}
+
+      {shareBill && (
+        <div ref={shareRootRef} aria-hidden="true" style={{ position: 'fixed', left: -10000, top: 0, width: 800, pointerEvents: 'none' }}>
+          {(() => {
+            const business = shareBill.businessSnapshot || ((shareBill.owner && typeof shareBill.owner === 'object') ? shareBill.owner : sessionUser)
+            return shareBill.billType === 'garage'
+              ? <GarageInvoice bill={shareBill} business={business} />
+              : <TransportInvoice bill={shareBill} business={business} />
+          })()}
+        </div>
+      )}
+      <style>{`.spin { animation: spin 0.8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

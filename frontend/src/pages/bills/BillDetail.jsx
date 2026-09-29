@@ -12,6 +12,7 @@ import { pdf } from '@react-pdf/renderer'
 import { PDFPendingBills } from '../../components/billing/PDFPendingBills'
 import { PDFInvoice } from '../../components/billing/PDFInvoice'
 import PaymentModal from '../../components/billing/PaymentModal'
+import { buildInvoicePdfFile, invoiceFileName, sharePdfFile } from '../../utils/invoiceShare'
 
 const amountToWords = (num) => {
   if (num === 0) return 'ZERO'
@@ -118,124 +119,19 @@ export default function BillDetail() {
     } finally { setIsDownloading(false) }
   }
 
-  const handleSharePDF = async (targetBill = bill) => {
-    if (isSharing || !targetBill) return
+  const handleSharePDF = async () => {
+    if (isSharing || !bill) return
     setIsSharing(true)
-
     try {
-      let pdfFile = cachedPdfFile;
-      const shareUrl = `${window.location.origin}/view-bill/${targetBill._id}`
-      const shareData = {
-        title: 'Invoice',
-        text: `Invoice #${targetBill.billNumber || ''}\nView/Download here: ${shareUrl}`,
-      }
-
-      // Fallback: Generate if not pre-cached
-      if (!pdfFile) {
-        const pdfDoc = new jsPDF('p', 'mm', 'a4')
-        const pages = document.querySelectorAll('.invoice-wrap, .garage-invoice-wrap')
-
-        if (pages.length === 0) {
-          throw new Error('No invoice content found to share')
-        }
-
-        for (let i = 0; i < pages.length; i++) {
-          const canvas = await html2canvas(pages[i], {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff'
-          })
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.75)
-          const pdfWidth = pdfDoc.internal.pageSize.getWidth()
-          const pdfHeight = pdfDoc.internal.pageSize.getHeight()
-
-          if (i > 0) pdfDoc.addPage()
-          pdfDoc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST')
-        }
-
-        const fileName = `Invoice_${(targetBill.billNumber || targetBill._id).replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`
-        const pdfBlob = pdfDoc.output('blob')
-        pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' })
-      }
-
-      // ── STRATEGY 1: Flutter Native Bridge (Best – works on Android & iOS perfectly) ──
-      // If the app is running inside a Flutter WebView that has registered
-      // window.FlutterShareBridge, hand the PDF off to Flutter so it can
-      // use share_plus to show the native OS share sheet with the real file.
-      const flutterBridge =
-        window.FlutterShareBridge ||          // android addJavascriptInterface
-        window.webkit?.messageHandlers?.FlutterShareBridge // iOS WKScriptMessageHandler
-
-      if (flutterBridge) {
-        // Convert PDF Blob → Base64 string
-        const reader = new FileReader()
-        const base64Data = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result.split(',')[1]) // strip data:...;base64,
-          reader.onerror = reject
-          reader.readAsDataURL(pdfFile)
-        })
-
-        const payload = JSON.stringify({
-          fileName: pdfFile.name,
-          fileData: base64Data,   // raw Base64 (no prefix)
-          mimeType: 'application/pdf'
-        })
-
-        // Android bridge
-        if (window.FlutterShareBridge?.postMessage) {
-          window.FlutterShareBridge.postMessage(payload)
-        }
-        // iOS bridge
-        else if (window.webkit?.messageHandlers?.FlutterShareBridge?.postMessage) {
-          window.webkit.messageHandlers.FlutterShareBridge.postMessage(payload)
-        }
-
-        markAsDownloaded(targetBill._id)
-        return  // done – Flutter will handle the rest
-      }
-
-      // ── STRATEGY 2: Web Share API (Browser fallback when NOT in Flutter) ──
-      if (navigator.share) {
-        const fileShareData = {
-          files: [pdfFile],
-          title: pdfFile.name
-        }
-
-        // Check if browser supports sharing this file
-        const canShareFiles = navigator.canShare ? navigator.canShare(fileShareData) : true;
-
-        if (canShareFiles) {
-          try {
-            await navigator.share(fileShareData)
-          } catch (shareErr) {
-            // If user cancelled (AbortError) or gesture expired (NotAllowedError), don't spam fallback.
-            if (shareErr.name !== 'AbortError' && shareErr.name !== 'NotAllowedError') {
-              await navigator.share(shareData)
-            }
-          }
-        } else {
-          // Text-only share
-          await navigator.share(shareData)
-        }
-      } else {
-        const url = URL.createObjectURL(pdfFile)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = pdfFile.name
-        a.click()
-        alert('Sharing not supported on this browser. File has been downloaded.')
-      }
-
-      markAsDownloaded(targetBill._id)
+      const pdfFile = cachedPdfFile || await buildInvoicePdfFile(invoiceRef.current, invoiceFileName(bill))
+      const shareUrl = `${window.location.origin}/view-bill/${bill._id}`
+      await sharePdfFile(pdfFile, { title: 'Invoice', text: `Invoice #${bill.billNumber || ''}
+View/Download here: ${shareUrl}` })
+      markAsDownloaded(bill._id)
     } catch (err) {
-      // Ignore AbortError (user cancelled) and NotAllowedError (autoShare missing gesture)
       if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
         console.error('PDF Share Error:', err)
         alert('Failed to share PDF')
-      } else if (err.name === 'NotAllowedError') {
-        console.warn('Auto-share blocked by browser. User must click Share manually.');
       }
     } finally { setIsSharing(false) }
   }
@@ -244,22 +140,8 @@ export default function BillDetail() {
     if (!bill) return;
     const preGeneratePdf = async () => {
       try {
-        const pdfDoc = new jsPDF('p', 'mm', 'a4')
-        const pages = document.querySelectorAll('.invoice-wrap, .garage-invoice-wrap')
-        if (pages.length === 0) return
-
-        for (let i = 0; i < pages.length; i++) {
-          const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
-          const imgData = canvas.toDataURL('image/jpeg', 0.75)
-          const pdfWidth = pdfDoc.internal.pageSize.getWidth()
-          const pdfHeight = pdfDoc.internal.pageSize.getHeight()
-          if (i > 0) pdfDoc.addPage()
-          pdfDoc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST')
-        }
-
-        const fileName = `Invoice_${(bill.billNumber || bill._id).replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`
-        const pdfBlob = pdfDoc.output('blob')
-        setCachedPdfFile(new File([pdfBlob], fileName, { type: 'application/pdf' }))
+        if (!invoiceRef.current) return
+        setCachedPdfFile(await buildInvoicePdfFile(invoiceRef.current, invoiceFileName(bill)))
       } catch (e) { console.error('Pre-generation failed', e) }
     }
     const timer = setTimeout(preGeneratePdf, 1500)
@@ -270,13 +152,7 @@ export default function BillDetail() {
     if (!id || id === 'new') return
     setLoading(true)
     fetchBill(id).then(b => {
-      if (b) {
-        setBill(b)
-        const autoShare = new URLSearchParams(search).get('autoShare') === 'true'
-        if (autoShare) {
-          setTimeout(() => handleSharePDF(b), 1000)
-        }
-      }
+      if (b) setBill(b)
       setLoading(false)
     })
   }, [id, fetchBill, search])
@@ -341,15 +217,13 @@ export default function BillDetail() {
 
           <button
             onClick={() => handleSharePDF()}
-            disabled={isSharing || !cachedPdfFile}
+            disabled={isSharing}
             className="action-btn share"
             title={getTranslatedText('Share PDF')}
-            style={{ background: (!cachedPdfFile || isSharing) ? '#E5E7EB' : '#F0FDF4', color: (!cachedPdfFile || isSharing) ? '#9CA3AF' : '#16A34A', border: (!cachedPdfFile || isSharing) ? '1.5px solid #E5E7EB' : '1.5px solid #DCFCE7', cursor: (!cachedPdfFile || isSharing) ? 'not-allowed' : 'pointer' }}
+            style={{ background: '#F0FDF4', color: '#16A34A', border: '1.5px solid #DCFCE7', cursor: 'pointer' }}
           >
             <Share2 size={18} />
-            <span className="btn-text">
-              {(!cachedPdfFile && !isSharing) ? getTranslatedText('Preparing...') : isSharing ? getTranslatedText('Sharing...') : getTranslatedText('Share')}
-            </span>
+            <span className="btn-text">{getTranslatedText('Share')}</span>
           </button>
 
           <button
@@ -531,7 +405,7 @@ export default function BillDetail() {
         );
       })()}
 
-      <div style={{ marginTop: 20, textAlign: 'center' }}><button className="btn btn-ghost" onClick={() => navigate(`/${bill?.billType || 'transport'}/bills`)} style={{ fontSize: '0.85rem' }}><FileText size={16} /> {getTranslatedText('Back to all bills')}</button></div>
+      <div style={{ marginTop: 20, textAlign: 'center' }}><button className="btn" onClick={() => navigate(`/${bill?.billType || 'transport'}/bills`)} style={{ fontSize: '0.85rem', background: '#7C3AED', color: '#FFFFFF', border: 'none', fontWeight: 700, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)' }}><FileText size={16} /> {getTranslatedText('Back to all bills')}</button></div>
 
       <style>{`
         .action-btn {

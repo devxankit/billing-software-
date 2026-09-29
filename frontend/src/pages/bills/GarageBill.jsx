@@ -99,6 +99,10 @@ export default function GarageBill({ initialData }) {
   const location = useLocation()
   const vehicleNoFromUrl = searchParams.get('vehicleNo') || ''
   const categoryFromUrl = searchParams.get('category') || ''
+  // Pre-selected customer, e.g. "New Job" from a service reminder
+  const partyIdFromUrl = searchParams.get('partyId') || ''
+  const customerNameFromUrl = searchParams.get('customerName') || ''
+  const customerPhoneFromUrl = searchParams.get('customerPhone') || ''
 
   const [saving, setSaving] = useState(false)
   const [savedBill, setSavedBill] = useState(null)
@@ -120,9 +124,9 @@ export default function GarageBill({ initialData }) {
   const { register, handleSubmit, watch, setValue, control, formState: { errors }, reset } = useForm({
     defaultValues: {
       billDate: dayjs(initialData?.billingDate || initialData?.billDate).format('YYYY-MM-DD') || dayjs().format('YYYY-MM-DD'),
-      partyId: initialData?.party?._id || initialData?.party || '',
-      customerName: initialData?.customerName || '',
-      customerPhone: initialData?.customerPhone || '',
+      partyId: initialData?.party?._id || initialData?.party || partyIdFromUrl,
+      customerName: initialData?.customerName || customerNameFromUrl,
+      customerPhone: initialData?.customerPhone || customerPhoneFromUrl,
       customerEmail: initialData?.customerEmail || '',
       customerAddress: initialData?.customerAddress || '',
       customerCity: initialData?.customerCity || '',
@@ -346,7 +350,7 @@ export default function GarageBill({ initialData }) {
       <p style={{ color: '#6B7280' }}>{getTranslatedText('Bill Number:')} #{savedBill.billNumber || getTranslatedText('Draft')}</p>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
         <button className="btn btn-primary" onClick={() => navigate(`/bills/${savedBill._id || savedBill.id}`)}><FileText size={16} /> {getTranslatedText('View Invoice')}</button>
-        <button className="btn btn-ghost" onClick={() => { setSavedBill(null); reset(); navigate('/garage/bills/new'); }}><Plus size={16} /> {getTranslatedText('New Bill')}</button>
+        <button className="btn" onClick={() => { setSavedBill(null); reset(); navigate('/garage/bills/new'); }} style={{ background: '#0F0D2E', color: '#FFFFFF', border: 'none', fontWeight: 800 }}><Plus size={16} /> {getTranslatedText('New Bill')}</button>
         <button className="btn btn-ghost" onClick={() => navigate('/garage/bills')}>{getTranslatedText('All Bills')}</button>
       </div>
     </div>

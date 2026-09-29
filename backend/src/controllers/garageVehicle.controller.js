@@ -1,4 +1,5 @@
 const GarageVehicle = require("../models/GarageVehicle");
+const { stripProtected } = require("../utils/sanitizeBody");
 
 async function listVehicles(req, res, next) {
   try {
@@ -13,7 +14,7 @@ async function listVehicles(req, res, next) {
 
 async function createVehicle(req, res, next) {
   try {
-    const data = { ...req.body, owner: req.user.id };
+    const data = { ...stripProtected(req.body), owner: req.user.id };
     const vehicle = await GarageVehicle.create(data);
     return res.json({ success: true, vehicle });
   } catch (e) {
@@ -28,7 +29,7 @@ async function updateVehicle(req, res, next) {
   try {
     const vehicle = await GarageVehicle.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { $set: req.body },
+      { $set: stripProtected(req.body) },
       { new: true }
     );
     if (!vehicle) return res.status(404).json({ success: false, message: "Vehicle not found" });

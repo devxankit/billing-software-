@@ -751,6 +751,8 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
+    // Start in the saved app language so the first paint isn't English
+    lng: localStorage.getItem('app_lang') || 'en',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // not needed for react as it escapes by default

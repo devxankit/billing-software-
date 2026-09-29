@@ -141,7 +141,17 @@ export default function GarageAlerts() {
             {!r.isShared ? (
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
-                  onClick={() => navigate(`/garage/bills/new?vehicleNo=${r.vehicleNo}`)}
+                  onClick={() => {
+                    // Carry the reminder's customer so the job card opens with the party selected
+                    const params = new URLSearchParams({ vehicleNo: r.vehicleNo || '' })
+                    const partyId = r.party?._id || r.party?.id || (typeof r.party === 'string' ? r.party : '')
+                    if (partyId) params.set('partyId', partyId)
+                    const name = r.customerName || r.party?.name
+                    const phone = r.customerPhone || r.party?.phone
+                    if (name) params.set('customerName', name)
+                    if (phone) params.set('customerPhone', phone)
+                    navigate(`/garage/bills/new?${params.toString()}`)
+                  }}
                   style={{ flex: 1, background: '#0F172A', color: 'white', border: 'none', borderRadius: 12, padding: '12px', fontSize: '0.8125rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
                   <Plus size={16} /> {getTranslatedText('New Job')}

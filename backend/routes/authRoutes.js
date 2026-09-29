@@ -38,15 +38,22 @@ router.post("/verify-otp", async (req, res, next) => {
     const phone = String(req.body?.phone || "").replace(/\D/g, "");
     const otp = String(req.body?.otp || "").replace(/\D/g, "");
     if (phone.length !== 10) {
-      return res.status(400).json({ success: false, message: "Invalid phone" });
+      return res.status(400).json({ success: false, code: "INVALID_PHONE", message: "Invalid phone number" });
     }
     if (otp.length !== 6) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({ success: false, code: "INVALID_OTP_FORMAT", message: "Please enter a valid 6-digit OTP" });
     }
 
-    const ok = verifyOtp(phone, otp);
-    if (!ok) {
-      return res.status(401).json({ success: false, message: "Invalid OTP" });
+    const verification = verifyOtp(phone, otp);
+    if (!verification.valid) {
+      const isExpired = verification.reason === "EXPIRED" || verification.reason === "NOT_FOUND" || verification.reason === "MAX_ATTEMPTS";
+      return res.status(400).json({
+        success: false,
+        code: isExpired ? "OTP_EXPIRED" : "OTP_INVALID",
+        reason: verification.reason,
+        message: verification.message || (isExpired ? "OTP has expired. Please request a new OTP." : "Invalid OTP. Please enter the correct code."),
+        attemptsLeft: verification.attemptsLeft
+      });
     }
 
     const user = await User.findOneAndUpdate(

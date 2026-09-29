@@ -3,7 +3,7 @@ import {
   Users, Search, Filter, UserPlus, X,
   User, Phone, Mail, Shield, Trash2, Edit3,
   ChevronLeft, ChevronRight, CheckCircle, Clock,
-  Truck, Wrench, Building2, MoreVertical, CreditCard, MapPin, Eye, FileText
+  Truck, Wrench, Building2, MoreVertical, CreditCard, Eye, FileText, History
 } from 'lucide-react'
 import { useAdmin } from '../../context/AdminContext'
 import { adminCreateUser, adminDeleteUser, adminListUsers, adminUpdateUser, getAdminUserHistory } from '../../api/adminApi'
@@ -223,10 +223,10 @@ export default function UserManagement() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             {isTransport ? <Truck size={16} color={accentColor} /> : <Wrench size={16} color={accentColor} />}
             <span style={{ fontSize: '0.7rem', fontWeight: 800, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {isTransport ? 'Transport Mode' : 'Garage Mode'} · User Management
+              {isTransport ? 'Transport Mode' : 'Garage Mode'}
             </span>
           </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>User Management</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{isTransport ? 'Transport Owners' : 'Garage Owners'}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '4px 0 0' }}>
             Manage {isTransport ? 'transporters, drivers & staff' : 'garage owners, mechanics & staff'}
           </p>
@@ -303,7 +303,7 @@ export default function UserManagement() {
                   </td>
                   <td style={{ padding: '14px 20px' }}>
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{user.phone || '—'}</p>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{user.email || '—'}</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500, overflowWrap: 'anywhere' }}>{user.email || '—'}</p>
                   </td>
                   <td style={{ padding: '14px 20px' }}>
                     <span style={{
@@ -389,7 +389,7 @@ export default function UserManagement() {
                         }}
                         title={isTransport ? "Trip History" : "Service History"}
                       >
-                        {isTransport ? <MapPin size={15} /> : <CreditCard size={15} />}
+                        {isTransport ? <History size={15} /> : <CreditCard size={15} />}
                       </button>
                       {isTransport && (
                         <button className="btn btn-ghost btn-sm btn-icon" style={{ color: '#10B981' }}
@@ -469,11 +469,12 @@ export default function UserManagement() {
                       <div key={trip.id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{trip.vehicle}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(trip.date).toLocaleDateString()}</div>
+                          {trip.route && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{trip.route}</div>}
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dayjs(trip.date).format('DD-MM-YYYY')}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 900 }}>₹{Number(trip.amount).toLocaleString()}</div>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase' }}>{trip.status}</div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: trip.status === 'Billed' ? 'var(--success)' : trip.status === 'Cancelled' ? 'var(--danger)' : '#D97706' }}>{trip.status}</div>
                         </div>
                       </div>
                     ))}
@@ -598,18 +599,18 @@ export default function UserManagement() {
                 </div>
                 <div>
                   <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{viewDetails.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {viewDetails.id}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID: #{String(viewDetails.id).slice(-6).toUpperCase()}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20 }}>
                 <div>
                   <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Contact Phone</div>
                   <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{viewDetails.phone || 'N/A'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Email Address</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{viewDetails.email || 'N/A'}</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{viewDetails.email || 'N/A'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Current Role</div>

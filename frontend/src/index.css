@@ -629,9 +629,7 @@ select.form-input {
 
 /* Top Header Bar — blends with page gradient, no box */
 .top-header {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #FFFFFF;
   border-bottom: 1px solid rgba(0,0,0,0.05);
   padding: 0 28px;
   display: flex;
@@ -686,9 +684,7 @@ select.form-input {
   left: 0;
   right: 0;
   height: var(--bottom-nav-h);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #FFFFFF;
   border-top: 1px solid var(--border);
   z-index: 500;
   padding: 0 8px;
@@ -697,28 +693,39 @@ select.form-input {
   transition: transform 0.2s ease;
 }
 
-/* Hide bottom nav when a modal is open */
-body[data-modal-open] .bottom-nav {
+/* Hide bottom nav when a modal is open or when virtual keyboard is open */
+body[data-modal-open] .bottom-nav,
+body.keyboard-open .bottom-nav,
+.keyboard-open .bottom-nav,
+body[data-keyboard-open="true"] .bottom-nav {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(100%) !important;
 }
 
 
-/* Hide bottom nav when keyboard is open (input focused) */
+/* Fixed bottom navigation for mobile */
 @media (max-width: 768px) {
-  body:has(input:focus, textarea:focus) .bottom-nav {
-    display: none !important;
-  }
   .bottom-nav {
     display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 500;
     padding-bottom: env(safe-area-inset-bottom);
     height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
   }
-}
 
-/* Fallback for older Android: hide when viewport shrinks due to keyboard */
-@media screen and (max-height: 500px) {
-  .bottom-nav {
+  body.keyboard-open .bottom-nav,
+  .keyboard-open .bottom-nav,
+  body[data-keyboard-open="true"] .bottom-nav {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 }
 
@@ -830,15 +837,6 @@ body[data-modal-open] .bottom-nav {
     padding-bottom: calc(var(--bottom-nav-h) + 20px); /* Bottom Nav Clearance */
   }
 
-  /* When keyboard is open (viewport height shrinks), remove the bottom padding */
-  @media screen and (max-height: 500px) {
-    .page-content {
-      padding-bottom: 16px; 
-    }
-    .main-content {
-      padding-bottom: 0;
-    }
-  }
 
   .admin-layout .top-header {
     display: flex !important;
@@ -934,6 +932,8 @@ body[data-modal-open] .bottom-nav {
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   padding: 48px 56px;
   background: var(--surface);
   max-width: none;
@@ -961,20 +961,29 @@ body[data-modal-open] .bottom-nav {
 
 /* Mobile auth */
 @media (max-width: 768px) {
+  /* svh = visible screen height on iOS (100vh includes the area behind Safari's
+     toolbars, which pushed the "centered" card below the middle of the screen) */
   .auth-layout { 
     flex-direction: column; 
-    height: auto;
     min-height: 100vh;
+    min-height: 100svh;
+    height: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    display: flex;
   }
   .auth-left { display: none; }
   .auth-right {
     width: 100%;
-    padding: 32px 24px;
-    min-height: fit-content;
-    height: auto !important;
-    overflow-y: visible !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: calc(32px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
+    min-height: 100vh;
+    min-height: 100svh;
+    box-sizing: border-box;
     background: var(--bg);
   }
   .auth-card {
@@ -982,6 +991,10 @@ body[data-modal-open] .bottom-nav {
     padding: 28px 24px;
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
+    margin: auto 0;
+    width: 100%;
+    max-width: 480px;
+    box-sizing: border-box;
   }
 }
 
@@ -1378,10 +1391,24 @@ body[data-modal-open] .bottom-nav {
 }
 
 /* Remove bottom padding fallback when keyboard is open */
-@media screen and (max-height: 500px) {
+body.keyboard-open .page-wrapper,
+body[data-keyboard-open="true"] .page-wrapper {
+  padding-bottom: 24px !important;
+}
+@media screen and (max-height: 600px) {
   .page-wrapper {
     padding-bottom: 24px !important;
   }
+}
+
+/* Short forms: no forced full-height; extra room only while the keyboard is open
+   so the last fields can scroll above it */
+.page-wrapper.keyboard-pad {
+  min-height: 0;
+}
+body.keyboard-open .page-wrapper.keyboard-pad,
+body[data-keyboard-open="true"] .page-wrapper.keyboard-pad {
+  padding-bottom: 300px !important;
 }
 
 /* ── Skeleton loading ── */
@@ -1437,7 +1464,7 @@ body.keyboard-open {
 
 body.keyboard-open .auth-layout {
   height: auto !important;
-  min-height: 100vh !important;
+  min-height: 100svh !important;
 }
 
 body.keyboard-open .auth-right {
@@ -1449,5 +1476,37 @@ body.keyboard-open .auth-right {
 @media (max-width: 768px) {
   body.keyboard-open .auth-right {
     padding-bottom: 320px !important;
+  }
+}
+
+/* ═══════════════════════════════════════
+   SETUP YOUR TRANSPORT / GARAGE (FIXED HEADER & SCROLLABLE FORM)
+   ═══════════════════════════════════════ */
+.setup-page-container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.setup-header-fixed {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg, #F8FAFC);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+@media (max-width: 768px) {
+  .auth-right:has(.setup-header-fixed) {
+    padding-top: 0 !important;
+  }
+  .auth-card:has(.setup-header-fixed) {
+    padding-top: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 }

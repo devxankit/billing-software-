@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Loader2, Truck, Wrench, CheckCircle2, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import logo from '../../assets/trans-logo.png'
+import { usePageTranslation } from '../../hooks/usePageTranslation'
 
 const roles = [
   {
@@ -32,6 +33,11 @@ export default function RoleSelect() {
   const [loading, setLoading] = useState(false)
   const { setRole, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
+  const { getTranslatedText } = usePageTranslation([
+    'Back', 'Choose Your Role', 'Select what best describes your business.', 'Included Features:',
+    'Setting up...', 'Continue',
+    ...roles.flatMap(r => [r.title, r.desc, ...r.features]),
+  ])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,20 +45,19 @@ export default function RoleSelect() {
       return
     }
     // If user already has a role, skip role selection — they cannot change it
-    if (user?.role === 'transport') {
-      navigate('/transport/dashboard', { replace: true })
-    } else if (user?.role === 'garage') {
-      navigate('/garage/dashboard', { replace: true })
+    if (user?.role === 'transport' || user?.role === 'garage') {
+      const dest = user.setupComplete ? `/${user.role}/dashboard` : `/register/${user.role}`
+      navigate(dest, { replace: true })
     }
-  }, [isAuthenticated, navigate, user?.role])
+  }, [isAuthenticated, navigate, user?.role, user?.setupComplete])
 
   const handleContinue = async () => {
     if (!selected) return
     setLoading(true)
     await new Promise(r => setTimeout(r, 600))
     await setRole(selected)
-    const dest = selected === 'garage' ? '/garage/dashboard' : '/transport/dashboard'
-    navigate(dest, { replace: true })
+    // Continue signup: business registration → (vehicles) → subscription
+    navigate(`/register/${selected}`, { replace: true })
   }
 
   return (
@@ -63,7 +68,7 @@ export default function RoleSelect() {
           onClick={() => navigate('/language-select')}
           style={{ position: 'absolute', left: 0, top: 0, background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 700 }}
         >
-          <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} /> Back
+          <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} /> {getTranslatedText('Back')}
         </button>
         <div style={{
           width: 44, height: 44, borderRadius: 12, overflow: 'hidden',
@@ -73,9 +78,9 @@ export default function RoleSelect() {
         }}>
           <img src={logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
-        <h2 className="auth-card-title" style={{ fontSize: '1.15rem' }}>Choose Your Role</h2>
+        <h2 className="auth-card-title" style={{ fontSize: '1.15rem' }}>{getTranslatedText('Choose Your Role')}</h2>
         <p className="auth-card-subtitle" style={{ fontSize: '0.75rem', marginTop: 2 }}>
-          Select what best describes your business.
+          {getTranslatedText('Select what best describes your business.')}
         </p>
       </div>
 
@@ -97,11 +102,11 @@ export default function RoleSelect() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div className="role-title">
-                  {role.title}
+                  {getTranslatedText(role.title)}
                 </div>
                 {selected === role.id && <CheckCircle2 size={18} color="var(--primary)" fill="white" />}
               </div>
-              <div className="role-desc">{role.desc}</div>
+              <div className="role-desc">{getTranslatedText(role.desc)}</div>
             </div>
           </button>
         ))}
@@ -120,12 +125,12 @@ export default function RoleSelect() {
         >
           <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ background: 'var(--primary)', color: 'white', width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px' }}>✓</span>
-            Included Features:
+            {getTranslatedText('Included Features:')}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
             {roles.find(r => r.id === selected)?.features.map(f => (
               <div key={f} style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', fontWeight: 500 }}>
-                <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)', opacity: 0.4 }}></div> {f}
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)', opacity: 0.4 }}></div> {getTranslatedText(f)}
               </div>
             ))}
           </div>
@@ -146,9 +151,9 @@ export default function RoleSelect() {
           disabled={!selected || loading}
         >
           {loading ? (
-            <><Loader2 size={16} className="spin" /> Setting up...</>
+            <><Loader2 size={16} className="spin" /> {getTranslatedText('Setting up...')}</>
           ) : (
-            <>Continue <ArrowRight size={16} /></>
+            <>{getTranslatedText('Continue')} <ArrowRight size={16} /></>
           )}
         </button>
       </div>
