@@ -2,14 +2,10 @@ const crypto = require("crypto");
 
 const OTP_TTL_SECONDS = 5 * 60; // 5 minutes validity
 const MAX_ATTEMPTS = 5;
-const RESEND_COOLDOWN_SECONDS = 30;   // minimum gap between two OTPs for one number
-const SEND_WINDOW_SECONDS = 15 * 60;  // rolling window for the send limit
-const MAX_SENDS_PER_WINDOW = 5;       // stops SMS spam and unlimited guessing via resends
 
 // In-memory OTP store: good for dev/single instance.
 // For production, replace with Redis or DB table.
 const store = new Map(); // phone -> { otp, expiresAtMs, attempts }
-const sendLog = new Map(); // phone -> [sentAtMs, ...] within the window
 
 // Demo/review accounts that log in with a fixed code instead of an SMS.
 // Off unless configured, e.g. OTP_TEST_PHONES=7458947838,6260491554 and OTP_TEST_CODE=123456
@@ -27,11 +23,6 @@ function cleanupExpired() {
       store.delete(phone);
     }
   }
-  for (const [phone, times] of sendLog.entries()) {
-    const recent = times.filter(t => now - t < SEND_WINDOW_SECONDS * 1000);
-    if (recent.length) sendLog.set(phone, recent);
-    else sendLog.delete(phone);
-  }
 }
 
 function generateOtp(phone) {
@@ -39,26 +30,10 @@ function generateOtp(phone) {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
-/**
- * Issue a new OTP, or refuse with { error: "RATE_LIMITED", retryAfterSeconds } when
- * the number asked too recently or too often.
- */
 function issueOtp(phone) {
   cleanupExpired();
-  const now = Date.now();
-  const sends = sendLog.get(phone) || [];
-
-  const last = sends[sends.length - 1];
-  if (last && now - last < RESEND_COOLDOWN_SECONDS * 1000) {
-    return { error: "RATE_LIMITED", retryAfterSeconds: Math.ceil((RESEND_COOLDOWN_SECONDS * 1000 - (now - last)) / 1000) };
-  }
-  if (sends.length >= MAX_SENDS_PER_WINDOW) {
-    return { error: "RATE_LIMITED", retryAfterSeconds: Math.ceil((SEND_WINDOW_SECONDS * 1000 - (now - sends[0])) / 1000) };
-  }
-
   const otp = generateOtp(phone);
-  store.set(phone, { otp, expiresAtMs: now + OTP_TTL_SECONDS * 1000, attempts: 0 });
-  sendLog.set(phone, [...sends, now]);
+  store.set(phone, { otp, expiresAtMs: Date.now() + OTP_TTL_SECONDS * 1000, attempts: 0 });
   return { otp, ttlSeconds: OTP_TTL_SECONDS };
 }
 

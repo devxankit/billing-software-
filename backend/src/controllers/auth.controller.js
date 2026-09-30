@@ -61,15 +61,7 @@ async function sendOtp(req, res, next) {
       return res.status(400).json({ success: false, message: "Invalid phone" });
     }
 
-      const issued = otpService.issue(phone);
-      if (issued.error === "RATE_LIMITED") {
-        return res.status(429).json({
-          success: false,
-          message: `Please wait ${issued.retryAfterSeconds} seconds before requesting another OTP.`,
-          retryAfterSeconds: issued.retryAfterSeconds,
-        });
-      }
-      const { otp, ttlSeconds } = issued;
+      const { otp, ttlSeconds } = otpService.issue(phone);
 
       let smsResult = null;
       if (!isTestPhone(phone)) {

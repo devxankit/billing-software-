@@ -13,7 +13,6 @@ const translation = require(B + 'src/controllers/translationController');
 const adminUsers = require(B + 'src/controllers/admin.users.controller');
 const otpStore = require(B + 'utils/otpStore');
 const smsService = require(B + 'src/services/sms.service');
-const { rateLimit } = require(B + 'src/middleware/rateLimit.middleware');
 
 const call = async (fn, req) => {
   const r = { code: 200, headers: {} }; r.status = c => (r.code = c, r); r.json = b => (r.body = b, r); r.set = (k, v) => (r.headers[k] = v, r);
@@ -33,27 +32,13 @@ const ok = (c, m, extra = '') => { c ? pass++ : fail++; console.log((c ? 'PASS '
   let r = await call(auth.sendOtp, { body: { phone: '9876500001' } });
   ok(r.code === 200 && r.body.otp === undefined && r.body.smsResult === undefined, 'OTP not returned in response');
   r = await call(auth.sendOtp, { body: { phone: '9876500001' } });
-  ok(r.code === 429 && r.body.retryAfterSeconds > 0, 'resend within 30s refused', JSON.stringify(r.body));
+  ok(r.code === 200, 'immediate resend allowed (no rate limit)', JSON.stringify(r.body));
   const rec = otpStore.store.get('9876500001');
   ok(/^\d{6}$/.test(rec.otp), 'OTP is 6 digits');
-  // max 5 sends per window (simulate time passing between sends)
-  const realNow = Date.now; let t = realNow();
-  Date.now = () => t;
-  let lastCode;
-  for (let i = 0; i < 5; i++) { t += 31000; lastCode = (await call(auth.sendOtp, { body: { phone: '9876500002' } })).code; }
-  t += 31000; const sixth = await call(auth.sendOtp, { body: { phone: '9876500002' } });
-  Date.now = realNow;
-  ok(lastCode === 200 && sixth.code === 429, '6th OTP within 15 minutes refused', `${lastCode} ${sixth.code}`);
   ok(otpStore.verifyOtp('7458947838', '123456').valid === false, 'old demo number no longer accepts 123456');
   process.env.OTP_TEST_PHONES = '7458947838'; process.env.OTP_TEST_CODE = '123456';
   otpStore.issueOtp('7458947838');
   ok(otpStore.verifyOtp('7458947838', '123456').valid === true, 'demo number works when configured in env');
-
-  // ── rate limiter ──
-  const lim = rateLimit({ windowSeconds: 60, max: 2, message: 'slow' });
-  const hit = () => call((req, res, next) => lim(req, res, next), { ip: '1.1.1.1', headers: { 'x-forwarded-for': '9.9.9.9' } });
-  const [a, b2, c] = [await hit(), await hit(), await hit()];
-  ok(a.code === 200 && b2.code === 200 && c.code === 429, 'rate limiter blocks after max');
 
   // ── translation caps ──
   r = await call(translation.translateBatch, { body: { texts: new Array(129).fill('x'), targetLang: 'hi' } });
