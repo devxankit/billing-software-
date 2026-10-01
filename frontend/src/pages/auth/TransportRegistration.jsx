@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import logo from '../../assets/trans-logo.png'
 import { uploadSingleFile } from '../../api/uploadApi'
 import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
+import { usePageTranslation } from '../../hooks/usePageTranslation'
 
 function Field({ label, error, children, required, sublabel }) {
   return (
@@ -24,8 +25,11 @@ function Field({ label, error, children, required, sublabel }) {
   )
 }
 
+const DOC_TEXTS = ['File selected', 'Already uploaded', 'Upload proof', 'is required']
+
 function DocUploadField({ label, icon: Icon, register, name, required, existingUrl }) {
   const [hasFile, setHasFile] = useState(false)
+  const { getTranslatedText: t } = usePageTranslation(DOC_TEXTS)
   const isUploaded = hasFile || !!existingUrl
   return (
     <div style={{ position: 'relative' }}>
@@ -50,14 +54,14 @@ function DocUploadField({ label, icon: Icon, register, name, required, existingU
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
           <div style={{ fontSize: '0.62rem', color: isUploaded ? '#16A34A' : '#94A3B8', fontWeight: 600 }}>
-            {hasFile ? 'File selected' : existingUrl ? 'Already uploaded' : 'Upload proof'}
+            {hasFile ? t('File selected') : existingUrl ? t('Already uploaded') : t('Upload proof')}
           </div>
         </div>
 
         <input 
           type="file" 
           {...register(name, { 
-            required: (required && !existingUrl) ? `${label} is required` : false,
+            required: (required && !existingUrl) ? `${label} ${t('is required')}` : false,
             onChange: (e) => setHasFile(e.target.files.length > 0)
           })}
           accept="image/*, application/pdf, .jpg, .jpeg, .png, .pdf"
@@ -85,7 +89,21 @@ function DocUploadField({ label, icon: Icon, register, name, required, existingU
   )
 }
 
+const PAGE_TEXTS = [
+  'Setup Your Transport', 'Basic business information', 'KYC & Bank details', 'Upload required documents',
+  'BASIC INFORMATION', 'KYC & BANK DETAILS', 'REQUIRED DOCUMENTS', 'Next Step', 'Back', 'Finish Setup',
+  'SKIP DOCUMENTS FOR NOW', 'Setup failed. Please try again.', 'Registration Failed. Please check your data.',
+  'OWNER NAME', 'Full Name', 'CONTACT NUMBER', 'Phone Number', 'TRANSPORT NAME', 'Trade Name',
+  'e.g. Radhe Logistics', 'OFFICE ADDRESS', 'Complete Office Address', 'AADHAR NUMBER', 'PAN NUMBER',
+  'BANK ACCOUNT NO', 'Account Number', 'IFSC CODE', 'Bank IFSC', 'BANK NAME', 'Bank Name', 'Aadhar Card',
+  'PAN Card', 'Authorized Signature', 'Transport Logo', 'Owner name is required', 'Only letters are allowed',
+  'Phone is required', 'Business name is required', 'Address is required', 'Aadhar No is required',
+  'Invalid Aadhar', 'PAN is required', 'Invalid PAN', 'Account no is required',
+  'Account no must be 9-18 digits', 'IFSC is required', 'Invalid IFSC format', 'Bank name is required',
+]
+
 export default function TransportRegistration() {
+  const { getTranslatedText: t } = usePageTranslation(PAGE_TEXTS)
   const { user, completeTransportSetup, isTransport, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -206,62 +224,48 @@ export default function TransportRegistration() {
         navigate('/setup/vehicles', { replace: true })
       } else {
         setLoading(false)
-        alert(res.message || 'Setup failed. Please try again.')
+        alert(res.message || t('Setup failed. Please try again.'))
       }
     } catch (error) {
       setLoading(false)
       console.error('Registration error:', error)
-      alert('Registration Failed. Please check your data.')
+      alert(t('Registration Failed. Please check your data.'))
     }
   }
 
   return (
-    <div className="animate-fadeIn setup-page-container" style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 24 }}>
-      {/* Fixed Header */}
-      <div className="setup-header-fixed" style={{ 
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        background: 'rgba(248, 250, 252, 0.98)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        paddingTop: 10,
-        paddingBottom: 14,
-        marginBottom: 16,
-        textAlign: 'center',
-        borderBottom: '1px solid #E2E8F0',
-        borderRadius: '0 0 20px 20px',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
-      }}>
-        <div style={{ 
-          width: 52, height: 52, borderRadius: 18, background: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px',
-          boxShadow: '0 6px 18px rgba(0,0,0,0.06)', border: '1.5px solid #F1F5F9'
+    <div className="animate-fadeIn" style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 24 }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: 24, background: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1.5px solid #F1F5F9'
         }}>
           <img src={logo} alt="Logo" style={{ width: '75%', height: '75%', objectFit: 'contain' }} />
         </div>
         <h2 style={{ 
-          fontSize: '1.35rem', fontWeight: 950, color: '#0F172A', letterSpacing: '-0.03em', marginBottom: 2,
+          fontSize: '1.5rem', fontWeight: 950, color: '#0F172A', letterSpacing: '-0.04em', marginBottom: 4,
           background: 'linear-gradient(to right, #0F172A, #4C1D95)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
         }}>
-          Setup Your Transport
+          {t('Setup Your Transport')}
         </h2>
         
         {/* Progress Dots */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
-          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 1 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 2 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 26, borderRadius: 10, background: step >= 3 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 1 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 2 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
+          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 3 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
         </div>
         
-        <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginTop: 8, marginBottom: 0 }}>
-           {step === 1 && 'Basic business information'}
-           {step === 2 && 'KYC & Bank details'}
-           {step === 3 && 'Upload required documents'}
+        <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginTop: 10 }}>
+           {step === 1 && t('Basic business information')}
+           {step === 2 && t('KYC & Bank details')}
+           {step === 3 && t('Upload required documents')}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="setup-scrollable-form" style={{ 
+      <form onSubmit={handleSubmit(onSubmit)} style={{ 
         background: 'white', padding: '24px 20px', borderRadius: 28, 
         border: '1px solid #F1F5F9', boxShadow: '0 20px 50px rgba(0,0,0,0.03)',
         position: 'relative'
@@ -270,50 +274,50 @@ export default function TransportRegistration() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <div style={{ width: 4, height: 14, background: '#7C3AED', borderRadius: 2 }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>BASIC INFORMATION</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>{t('BASIC INFORMATION')}</span>
             </div>
 
             <div className="grid sm-grid-cols-2 gap-3">
-              <Field label="OWNER NAME" error={errors.name} required>
+              <Field label={t('OWNER NAME')} error={errors.name} required>
                 <div className="input-group">
                   <span className="input-prefix"><User size={14} /></span>
                   <input 
                     {...register('name', { 
-                      required: 'Owner name is required',
-                      pattern: { value: PERSON_NAME_PATTERN, message: 'Only letters are allowed' }
+                      required: t('Owner name is required'),
+                      pattern: { value: PERSON_NAME_PATTERN, message: t('Only letters are allowed') }
                     })} 
                     onInput={(e) => { 
                       e.target.value = stripNonPersonName(e.target.value);
                       e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase()); 
                     }}
-                    placeholder="Full Name" className="form-input" style={{ borderRadius: 12, height: 44, fontSize: '0.875rem' }} 
+                    placeholder={t('Full Name')} className="form-input" style={{ borderRadius: 12, height: 44, fontSize: '0.875rem' }} 
                   />
                 </div>
               </Field>
               
-              <Field label="CONTACT NUMBER" error={errors.phone} required>
+              <Field label={t('CONTACT NUMBER')} error={errors.phone} required>
                 <div className="input-group">
                   <span className="input-prefix"><Phone size={14} /></span>
-                  <input {...register('phone', { required: 'Phone is required' })} placeholder="Phone Number" className="form-input" readOnly style={{ borderRadius: 12, height: 44, background: '#F8FAFC', fontSize: '0.875rem' }} />
+                  <input {...register('phone', { required: t('Phone is required') })} placeholder={t('Phone Number')} className="form-input" readOnly style={{ borderRadius: 12, height: 44, background: '#F8FAFC', fontSize: '0.875rem' }} />
                 </div>
               </Field>
 
-              <Field label="TRANSPORT NAME" error={errors.businessName} required sublabel="Trade Name">
+              <Field label={t('TRANSPORT NAME')} error={errors.businessName} required sublabel={t('Trade Name')}>
                 <div className="input-group">
                   <span className="input-prefix"><Truck size={14} /></span>
                   <input 
-                    {...register('businessName', { required: 'Business name is required' })} 
+                    {...register('businessName', { required: t('Business name is required') })} 
                     onInput={(e) => { e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase()); }}
-                    placeholder="e.g. Radhe Logistics" className="form-input" style={{ borderRadius: 12, height: 44, fontSize: '0.875rem' }} 
+                    placeholder={t('e.g. Radhe Logistics')} className="form-input" style={{ borderRadius: 12, height: 44, fontSize: '0.875rem' }} 
                   />
                 </div>
               </Field>
             </div>
 
-            <Field label="OFFICE ADDRESS" error={errors.address} required>
+            <Field label={t('OFFICE ADDRESS')} error={errors.address} required>
               <div className="input-group">
                 <span className="input-prefix" style={{ top: 12, transform: 'none' }}><MapPin size={14} /></span>
-                <textarea {...register('address', { required: 'Address is required' })} placeholder="Complete Office Address" className="form-input" style={{ minHeight: 64, paddingTop: 8, borderRadius: 12, fontSize: '0.875rem', resize: 'none' }} />
+                <textarea {...register('address', { required: t('Address is required') })} placeholder={t('Complete Office Address')} className="form-input" style={{ minHeight: 64, paddingTop: 8, borderRadius: 12, fontSize: '0.875rem', resize: 'none' }} />
               </div>
             </Field>
 
@@ -323,7 +327,7 @@ export default function TransportRegistration() {
                 background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)', 
                 boxShadow: '0 8px 24px rgba(124, 58, 237, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10
               }}>
-                Next Step <ArrowRight size={18} strokeWidth={2.5} />
+                {t('Next Step')} <ArrowRight size={18} strokeWidth={2.5} />
               </button>
             </div>
           </div>
@@ -333,16 +337,16 @@ export default function TransportRegistration() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <div style={{ width: 4, height: 14, background: '#7C3AED', borderRadius: 2 }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>KYC & BANK DETAILS</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>{t('KYC & BANK DETAILS')}</span>
             </div>
 
             <div className="grid sm-grid-cols-2 gap-3">
-              <Field label="AADHAR NUMBER" error={errors.aadharNo} required>
+              <Field label={t('AADHAR NUMBER')} error={errors.aadharNo} required>
                 <div className="input-group">
                   <span className="input-prefix"><Shield size={14} /></span>
                   <input {...register('aadharNo', { 
-                    required: 'Aadhar No is required',
-                    pattern: { value: /^[0-9]{12}$/, message: 'Invalid Aadhar' }
+                    required: t('Aadhar No is required'),
+                    pattern: { value: /^[0-9]{12}$/, message: t('Invalid Aadhar') }
                   })} 
                   type="tel"
                   inputMode="numeric"
@@ -353,65 +357,65 @@ export default function TransportRegistration() {
                 </div>
               </Field>
 
-              <Field label="PAN NUMBER" error={errors.panNo} required>
+              <Field label={t('PAN NUMBER')} error={errors.panNo} required>
                 <div className="input-group">
                   <span className="input-prefix"><FileText size={14} /></span>
                   <input {...register('panNo', { 
-                    required: 'PAN is required',
-                    pattern: { value: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i, message: 'Invalid PAN' }
+                    required: t('PAN is required'),
+                    pattern: { value: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i, message: t('Invalid PAN') }
                   })} 
                   onInput={(e) => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)}
                   placeholder="ABCDE1234F" className="form-input" style={{ borderRadius: 12, height: 44 }} />
                 </div>
               </Field>
 
-              <Field label="BANK ACCOUNT NO" error={errors.bankAccNo} required>
+              <Field label={t('BANK ACCOUNT NO')} error={errors.bankAccNo} required>
                 <div className="input-group">
                   <span className="input-prefix"><CreditCard size={14} /></span>
                   <input {...register('bankAccNo', { 
-                    required: 'Account no is required',
-                    pattern: { value: /^[0-9]{9,18}$/, message: 'Account no must be 9-18 digits' }
+                    required: t('Account no is required'),
+                    pattern: { value: /^[0-9]{9,18}$/, message: t('Account no must be 9-18 digits') }
                   })} 
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 18)}
-                  placeholder="Account Number" className="form-input" style={{ borderRadius: 12, height: 44 }} />
+                  placeholder={t('Account Number')} className="form-input" style={{ borderRadius: 12, height: 44 }} />
                 </div>
               </Field>
 
-              <Field label="IFSC CODE" error={errors.bankIfsc} required>
+              <Field label={t('IFSC CODE')} error={errors.bankIfsc} required>
                 <div className="input-group">
                   <span className="input-prefix"><Building2 size={14} /></span>
                   <input {...register('bankIfsc', { 
-                    required: 'IFSC is required',
-                    pattern: { value: /^[A-Z]{4}0[A-Z0-9]{6}$/, message: 'Invalid IFSC format' }
+                    required: t('IFSC is required'),
+                    pattern: { value: /^[A-Z]{4}0[A-Z0-9]{6}$/, message: t('Invalid IFSC format') }
                   })} 
                   onInput={(e) => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)}
-                  placeholder="Bank IFSC" className="form-input" style={{ borderRadius: 12, height: 44 }} />
+                  placeholder={t('Bank IFSC')} className="form-input" style={{ borderRadius: 12, height: 44 }} />
                 </div>
               </Field>
 
-              <Field label="BANK NAME" error={errors.bankName} required>
+              <Field label={t('BANK NAME')} error={errors.bankName} required>
                 <div className="input-group">
                   <span className="input-prefix"><Building2 size={14} /></span>
                   <input {...register('bankName', { 
-                    required: 'Bank name is required',
-                    pattern: { value: /^[a-zA-Z\s.]+$/, message: 'Only letters are allowed' }
+                    required: t('Bank name is required'),
+                    pattern: { value: /^[a-zA-Z\s.]+$/, message: t('Only letters are allowed') }
                   })} 
                   onInput={(e) => {
                     e.target.value = e.target.value.replace(/[^a-zA-Z\s.]/g, '');
                     e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
                   }}
-                  placeholder="Bank Name" className="form-input" style={{ borderRadius: 12, height: 44 }} />
+                  placeholder={t('Bank Name')} className="form-input" style={{ borderRadius: 12, height: 44 }} />
                 </div>
               </Field>
             </div>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-              <button type="button" onClick={() => setStep(1)} className="btn btn-ghost" style={{ flex: 1, height: 50, borderRadius: 14, fontWeight: 800 }}>Back</button>
+              <button type="button" onClick={() => setStep(1)} className="btn btn-ghost" style={{ flex: 1, height: 50, borderRadius: 14, fontWeight: 800 }}>{t('Back')}</button>
               <button type="button" onClick={handleNext} className="btn btn-primary" style={{ 
                 flex: 2, height: 50, borderRadius: 14, fontWeight: 900,
                 background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
                 boxShadow: '0 8px 24px rgba(124, 58, 237, 0.2)'
-              }}>Next Step <ArrowRight size={18} strokeWidth={2.5} /></button>
+              }}>{t('Next Step')} <ArrowRight size={18} strokeWidth={2.5} /></button>
             </div>
           </div>
         </div>
@@ -420,29 +424,29 @@ export default function TransportRegistration() {
           <div>
              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <div style={{ width: 4, height: 14, background: '#7C3AED', borderRadius: 2 }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>REQUIRED DOCUMENTS</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#1E293B', letterSpacing: '0.02em' }}>{t('REQUIRED DOCUMENTS')}</span>
             </div>
 
             <div style={{ marginBottom: 12, padding: '14px', background: '#F8FAFB', borderRadius: 20, border: '1px solid #F1F5F9' }}>
               <div className="grid sm-grid-cols-2 gap-3">
-                <DocUploadField label="Aadhar Card" icon={Shield} register={register} name="docAadhar" existingUrl={user?.documents?.aadharUrl} />
-                <DocUploadField label="PAN Card" icon={FileText} register={register} name="docPan" existingUrl={user?.documents?.panUrl} />
-                <DocUploadField label="Authorized Signature" icon={PenTool} register={register} name="docSignature" existingUrl={user?.signatureUrl} />
-                <DocUploadField label="Transport Logo" icon={Image} register={register} name="docLogo" existingUrl={user?.logoUrl} />
+                <DocUploadField label={t('Aadhar Card')} icon={Shield} register={register} name="docAadhar" existingUrl={user?.documents?.aadharUrl} />
+                <DocUploadField label={t('PAN Card')} icon={FileText} register={register} name="docPan" existingUrl={user?.documents?.panUrl} />
+                <DocUploadField label={t('Authorized Signature')} icon={PenTool} register={register} name="docSignature" existingUrl={user?.signatureUrl} />
+                <DocUploadField label={t('Transport Logo')} icon={Image} register={register} name="docLogo" existingUrl={user?.logoUrl} />
               </div>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
-              <button type="button" onClick={() => setStep(2)} className="btn btn-ghost" style={{ flex: '1 1 80px', height: 50, borderRadius: 14, fontWeight: 800 }}>Back</button>
+              <button type="button" onClick={() => setStep(2)} className="btn btn-ghost" style={{ flex: '1 1 80px', height: 50, borderRadius: 14, fontWeight: 800 }}>{t('Back')}</button>
               <button type="submit" className="btn btn-primary" disabled={loading} style={{ 
                 flex: '2 1 150px', height: 50, borderRadius: 14, fontWeight: 900,
                 background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
                 boxShadow: '0 8px 24px rgba(124, 58, 237, 0.2)'
               }}>
-                {loading ? <Loader2 size={18} className="spin" /> : <>Finish Setup <ArrowRight size={18} strokeWidth={2.5} /></>}
+                {loading ? <Loader2 size={18} className="spin" /> : <>{t('Finish Setup')} <ArrowRight size={18} strokeWidth={2.5} /></>}
               </button>
               <button type="button" onClick={handleSubmit(onSubmit)} className="btn btn-link" style={{ flex: '1 1 100%', color: '#64748B', fontSize: '0.75rem', marginTop: 8, fontWeight: 800, textAlign: 'center' }}>
-                SKIP DOCUMENTS FOR NOW
+                {t('SKIP DOCUMENTS FOR NOW')}
               </button>
             </div>
           </div>

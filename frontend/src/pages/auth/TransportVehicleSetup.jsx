@@ -5,8 +5,16 @@ import { Truck, Plus, Loader2, ArrowLeft, X, Info, CheckCircle2, Check, ChevronR
 import { useAuth } from '../../context/AuthContext'
 import { useVehicles } from '../../context/VehicleContext'
 import logo from '../../assets/trans-logo.png'
+import { usePageTranslation } from '../../hooks/usePageTranslation'
+
+const PAGE_TEXTS = [
+  'Step 4: Your Fleet', 'Add at least one vehicle to your transport business.', 'Vehicle Number', 'Type',
+  'Tempo', 'Truck', 'Container', 'Tanker', 'Trailer', 'Ready Fleet', 'Continue', 'Skip for now',
+  'Failed to add vehicle. Possibly already registered.', 'Required', 'Format: MH 12 AB 1234',
+]
 
 export default function TransportVehicleSetup() {
+  const { getTranslatedText: t } = usePageTranslation(PAGE_TEXTS)
   const { user, logout } = useAuth()
   const { addVehicle, vehicles } = useVehicles()
   const navigate = useNavigate()
@@ -27,7 +35,7 @@ export default function TransportVehicleSetup() {
       reset()
     } catch (e) {
       console.error('Add vehicle error:', e)
-      const msg = e.response?.data?.message || 'Failed to add vehicle. Possibly already registered.'
+      const msg = e.response?.data?.message || t('Failed to add vehicle. Possibly already registered.')
       alert(msg)
     } finally {
       setLoading(false)
@@ -35,9 +43,9 @@ export default function TransportVehicleSetup() {
   }
 
   return (
-    <div className="animate-fadeIn setup-page-container" style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 40 }}>
+    <div className="animate-fadeIn" style={{ maxWidth: 640, margin: '0 auto', paddingBottom: 40 }}>
       {/* Header (Outside Card) */}
-      <div className="setup-header-fixed" style={{ textAlign: 'center', marginBottom: 20, position: 'sticky', top: 0, zIndex: 30, background: 'rgba(248, 250, 252, 0.98)', paddingTop: 10, paddingBottom: 14, borderRadius: '0 0 20px 20px', borderBottom: '1px solid #E2E8F0' }}>
+      <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative' }}>
         {/* Back Button */}
         <button
           onClick={() => navigate('/register/transport', { state: { editMode: true, startStep: 3 } })}
@@ -63,10 +71,10 @@ export default function TransportVehicleSetup() {
           <img src={logo} alt="Logo" style={{ width: '70%', height: '70%', objectFit: 'contain' }} />
         </div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F172A', marginBottom: 6, letterSpacing: '-0.02em' }}>
-          Step 4: Your Fleet
+          {t('Step 4: Your Fleet')}
         </h2>
         <p style={{ fontSize: '0.875rem', color: '#64748B', fontWeight: 500 }}>
-          Add at least one vehicle to your transport business.
+          {t('Add at least one vehicle to your transport business.')}
         </p>
       </div>
 
@@ -82,13 +90,13 @@ export default function TransportVehicleSetup() {
           <div style={{ background: '#F8FAFC', borderRadius: 20, padding: 16, marginBottom: 16, border: '1px solid #E2E8F0' }}>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <div className="form-group">
-                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>Vehicle Number</label>
+                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>{t('Vehicle Number')}</label>
                  <input 
                    {...register('vehicleNumber', { 
-                     required: 'Required',
+                     required: t('Required'),
                      pattern: { 
                        value: /^[A-Z]{2}\s?\d{2}\s?[A-Z]{1,2}\s?\d{4}$/i, 
-                       message: 'Format: MH 12 AB 1234' 
+                       message: t('Format: MH 12 AB 1234') 
                      }
                    })} 
                    placeholder="MH 12 AB 1234"
@@ -99,17 +107,17 @@ export default function TransportVehicleSetup() {
                  {errors.vehicleNumber && <span style={{ color: '#EF4444', fontSize: '0.65rem', fontWeight: 700, marginTop: 4, display: 'block' }}>{errors.vehicleNumber.message}</span>}
                </div>
                <div className="form-group">
-                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>Type</label>
+                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>{t('Type')}</label>
                  <select 
                    {...register('vehicleType')} 
                    style={{ height: 48, borderRadius: 14, background: 'white' }}
                    className="form-input"
                  >
-                   <option>Tempo</option>
-                   <option>Truck</option>
-                   <option>Container</option>
-                   <option>Tanker</option>
-                   <option>Trailer</option>
+                   <option value="Tempo">{t('Tempo')}</option>
+                   <option value="Truck">{t('Truck')}</option>
+                   <option value="Container">{t('Container')}</option>
+                   <option value="Tanker">{t('Tanker')}</option>
+                   <option value="Trailer">{t('Trailer')}</option>
                  </select>
                </div>
              </div>
@@ -134,7 +142,7 @@ export default function TransportVehicleSetup() {
           <div style={{ marginTop: 30 }}>
             <h4 style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, letterSpacing: '0.02em' }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A' }} />
-              Ready Fleet ({vehicles.length})
+              {t('Ready Fleet')} ({vehicles.length})
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               {vehicles.map(v => (
@@ -147,7 +155,7 @@ export default function TransportVehicleSetup() {
                     <Truck size={14} color="#7C3AED" />
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1E293B', letterSpacing: '0.02em' }}>{v.vehicleNumber}</span>
                   </div>
-                  <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{v.vehicleType || 'Truck'}</span>
+                  <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{t(v.vehicleType || 'Truck')}</span>
                 </div>
               ))}
             </div>
@@ -165,7 +173,7 @@ export default function TransportVehicleSetup() {
             }}
             className="hover:scale-[1.01] active:scale-[0.98]"
           >
-            {vehicles.length > 0 ? 'Continue' : 'Skip for now'} <ChevronRight size={18} />
+            {vehicles.length > 0 ? t('Continue') : t('Skip for now')} <ChevronRight size={18} />
           </button>
       </div>
 

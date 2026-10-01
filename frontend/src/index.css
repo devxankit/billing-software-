@@ -1478,35 +1478,3 @@ body.keyboard-open .auth-right {
     padding-bottom: 320px !important;
   }
 }
-
-/* ═══════════════════════════════════════
-   SETUP YOUR TRANSPORT / GARAGE (FIXED HEADER & SCROLLABLE FORM)
-   ═══════════════════════════════════════ */
-.setup-page-container {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  position: relative;
-}
-
-.setup-header-fixed {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: var(--bg, #F8FAFC);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-}
-
-@media (max-width: 768px) {
-  .auth-right:has(.setup-header-fixed) {
-    padding-top: 0 !important;
-  }
-  .auth-card:has(.setup-header-fixed) {
-    padding-top: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-}
