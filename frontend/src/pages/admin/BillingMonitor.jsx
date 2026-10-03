@@ -252,9 +252,9 @@ export default function BillingMonitor() {
             <div style={{ width: 52, height: 52, borderRadius: 16, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <s.icon size={26} color={s.color} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{s.label}</p>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: '2px 0 0' }}>{s.value}</h2>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: '2px 0 0', overflowWrap: 'anywhere', lineHeight: 1.2 }}>{s.value}</h2>
             </div>
           </div>
         ))}
@@ -348,7 +348,7 @@ export default function BillingMonitor() {
             </thead>
             <tbody>
               {paginated.map(inv => (
-                <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)', transition: '0.2s' }} className="table-row-hover">
+                <tr key={inv._id || inv.id} style={{ borderBottom: '1px solid var(--border)', transition: '0.2s' }} className="table-row-hover">
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
