@@ -95,6 +95,7 @@ export function AdminProvider({ children }) {
           // Payments are recorded in paidAmount; a bill marked paid without payment entries counts as fully paid
           const paid = b.status === 'paid' ? (b.paidAmount || b.grandTotal || 0) : (b.paidAmount || 0)
           return {
+          _id: b._id,
           id: b.billNumber || b._id,
           businessName: b.owner?.businessName || b.owner?.name || '—',
           userName: b.owner?.name || '—',
@@ -450,7 +451,10 @@ export function AdminProvider({ children }) {
     pendingInvoices: dbStats?.pendingInvoices ?? invoices.filter(i => i.status === 'Pending').length,
     totalDrivers: drivers.length,
     totalStaff: staff.length,
-  }), [dbStats, users, businesses, invoices, drivers, staff])
+    // What the platform itself earns: subscription payments from this mode's businesses
+    platformRevenue: softwareSales.filter(s => s.role === mode).reduce((acc, s) => acc + (Number(s.amountPaid) || 0), 0),
+    platformPending: softwareSales.filter(s => s.role === mode).reduce((acc, s) => acc + (Number(s.pendingAmount) || 0), 0),
+  }), [dbStats, users, businesses, invoices, drivers, staff, softwareSales, mode])
 
   const value = useMemo(() => ({
     mode, switchMode, loading, refreshAll,

@@ -19,9 +19,9 @@ export default function FinanceDashboard({ stats, invoices, payments }) {
             <div style={{ width: 56, height: 56, borderRadius: 16, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <s.icon size={28} color={s.color} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{s.label}</p>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '4px 0 0' }}>{s.value}</h2>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '4px 0 0', overflowWrap: 'anywhere', lineHeight: 1.2 }}>{s.value}</h2>
             </div>
           </div>
         ))}

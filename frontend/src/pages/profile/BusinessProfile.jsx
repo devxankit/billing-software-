@@ -339,6 +339,7 @@ export default function BusinessProfile() {
                   e.target.value = val.slice(0, 10);
                 }}
                 maxLength={10}
+                autoComplete="section-primary tel-national"
                 placeholder="98765 43210" className="form-input" inputMode="numeric" />
               </Field>
               <Field label={getTranslatedText('Alternate Mobile (Optional)')} error={errors.alternatePhone}>
@@ -357,6 +358,7 @@ export default function BusinessProfile() {
                     e.target.value = val.slice(0, 10);
                   }}
                   maxLength={10}
+                  autoComplete="section-alternate tel-national"
                   placeholder={getTranslatedText('Alternate Mobile (Optional)')} 
                   className="form-input" 
                   inputMode="numeric" 
