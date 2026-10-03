@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from "r
 import { normalizeLanguageCode, isRTLLanguage } from "../utils/languageUtils";
 import i18n from "../i18n/i18n";
 import { useAuth } from "../context/AuthContext";
+import { translateBatch } from "../services/translationService";
 import dayjs from 'dayjs';
 
 // Import dayjs locale objects
@@ -113,6 +114,25 @@ export function LanguageProvider({ children }) {
     if (i18n.language !== language) {
       i18n.changeLanguage(language);
     }
+  }, [language]);
+
+  // Pre-translate every page's static strings in the background, so pages open
+  // already translated instead of showing English until their own request returns
+  useEffect(() => {
+    if (language === "en") return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const { default: strings } = await import("../i18n/pageStrings.json");
+        if (!cancelled) await translateBatch(strings, language, "en", true);
+      } catch (e) {
+        // Pages still translate themselves on demand
+      }
+    }, 1000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [language]);
 
   const changeLanguage = async (newLang) => {

@@ -35,7 +35,8 @@ export default function Profile() {
     'Business Owner', 'Edit Profile', 'Garage', 'Transport', 'Admin', 'Account',
     'Current Plan', 'Active', 'Expired', 'Expires on', 'Manage', 'Search', 'Cancel', 'Logout',
     'Terms of Service', 'Privacy Policy', 'Delete Account', 'Warning: This action is permanent', 'Are you sure?', 'Delete',
-    'App Language'
+    'App Language', 'Professional Plan', 'No Active Plan', 'All your data will be deleted.',
+    'Deleting...', 'Yes, Delete', 'No, Cancel', 'Are you sure you want to logout?'
   ])
   const { user, logout, isAdmin, deleteAccount } = useAuth()
   const { language, changeLanguage } = useLanguage()
@@ -190,7 +191,7 @@ export default function Profile() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#1E293B' }}>
-                  {user?.planName || (user?.subscriptionActive ? 'Professional Plan' : 'No Active Plan')}
+                  {user?.planName ? <TranslatedText>{user.planName}</TranslatedText> : getTranslatedText(user?.subscriptionActive ? 'Professional Plan' : 'No Active Plan')}
                 </span>
                 <span className={`badge ${user?.subscriptionActive ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
                   {user?.subscriptionActive ? getTranslatedText('Active') : getTranslatedText('Expired')}
@@ -359,7 +360,7 @@ export default function Profile() {
                 <Trash2 size={32} color="var(--danger)" />
              </div>
              <h3 style={{ fontWeight: 900, fontSize: '1.25rem', marginBottom: 8 }}>{getTranslatedText('Are you sure?')}</h3>
-             <p style={{ color: '#64748B', fontSize: '0.875rem', marginBottom: 24, lineHeight: 1.5 }}>{getTranslatedText('Warning: This action is permanent')}. All your data will be deleted.</p>
+             <p style={{ color: '#64748B', fontSize: '0.875rem', marginBottom: 24, lineHeight: 1.5 }}>{getTranslatedText('Warning: This action is permanent')}. {getTranslatedText('All your data will be deleted.')}</p>
              
              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <button 
@@ -376,7 +377,7 @@ export default function Profile() {
                   }}
                   style={{ height: 48, fontWeight: 800 }}
                 >
-                  {isDeleting ? 'Deleting...' : getTranslatedText('Yes, Delete')}
+                  {isDeleting ? getTranslatedText('Deleting...') : getTranslatedText('Yes, Delete')}
                 </button>
                 <button className="btn btn-ghost btn-full" onClick={() => setShowDeleteConfirm(false)} style={{ height: 48 }}>{getTranslatedText('No, Cancel')}</button>
              </div>

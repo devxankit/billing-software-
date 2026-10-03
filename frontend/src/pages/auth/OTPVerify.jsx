@@ -138,6 +138,32 @@ export default function OTPVerify() {
     }
   }
 
+  // Auto-fill: the browser reads the OTP SMS where it can (WebOTP), and the
+  // mobile app can hand over the code (or the whole SMS text) via window.fillOtp
+  const handleOtpChangeRef = useRef(handleOtpChange)
+  handleOtpChangeRef.current = handleOtpChange
+
+  useEffect(() => {
+    const fill = (value) => {
+      const code = String(value || '').match(/\b\d{6}\b/)?.[0]
+      if (code) handleOtpChangeRef.current(code)
+    }
+    window.fillOtp = fill
+
+    const abort = new AbortController()
+    if ('OTPCredential' in window) {
+      navigator.credentials.get({ otp: { transport: ['sms'] }, signal: abort.signal })
+        .then(cred => fill(cred?.code))
+        .catch(() => {})
+    }
+    window.flutter_inappwebview?.callHandler?.('listenForOtp')?.then?.(fill)?.catch?.(() => {})
+
+    return () => {
+      abort.abort()
+      delete window.fillOtp
+    }
+  }, [])
+
   const handleResend = async () => {
     setResending(true)
     setOtp('')
@@ -216,7 +242,7 @@ export default function OTPVerify() {
             border: '1px solid #FCA5A5',
             borderRadius: 14,
             padding: '10px 14px',
-            marginBottom: 20,
+            marginBottom: 28,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

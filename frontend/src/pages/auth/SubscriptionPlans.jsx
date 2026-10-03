@@ -5,6 +5,7 @@ import { getAvailablePlans, subscribeToPlan, createRazorpayOrder, verifyRazorpay
 import { useAuth } from '../../context/AuthContext'
 import logo from '../../assets/trans-logo.png'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
+import TranslatedText from '../../components/TranslatedText'
 
 export default function SubscriptionPlans() {
   const { getTranslatedText } = usePageTranslation([
@@ -12,7 +13,8 @@ export default function SubscriptionPlans() {
     'Pick a professional subscription to power your business workflow.',
     'Yearly Plans', 'Subscribe Now', 'Failed to create order',
     'Razorpay SDK failed to load. Are you online?', 'Payment verification failed',
-    'Something went wrong with the payment process', 'mo', 'yr', 'GST', 'Skip for now'
+    'Something went wrong with the payment process', 'mo', 'yr', 'GST', 'Skip for now',
+    'Available Plans', 'Inclusive of all taxes', 'Active Plan', 'Days', 'Months', 'Years'
   ])
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
@@ -206,7 +208,7 @@ export default function SubscriptionPlans() {
                  <div style={{ width: 26, height: 26, borderRadius: 6, background: isPro ? '#F5F3FF' : '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPro ? '#7C3AED' : '#64748B' }}>
                    {isPro ? <Zap size={14} fill="#7C3AED" /> : <Star size={14} />}
                  </div>
-                 <h3 style={{ fontSize: '0.9375rem', fontWeight: 900, color: '#1E293B', margin: 0 }}>{plan.name}</h3>
+                 <h3 style={{ fontSize: '0.9375rem', fontWeight: 900, color: '#1E293B', margin: 0 }}><TranslatedText>{plan.name}</TranslatedText></h3>
               </div>
               <div style={{ marginBottom: 10 }}>
                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
@@ -214,7 +216,7 @@ export default function SubscriptionPlans() {
                    <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 600 }}>/ {plan.durationValue || 1} {getTranslatedText(plan.durationType || plan.interval || 'yr')}</span>
                  </div>
                  <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 650, marginTop: 2 }}>
-                    Inclusive of all taxes
+                    {getTranslatedText('Inclusive of all taxes')}
                  </div>
               </div>
               <button 

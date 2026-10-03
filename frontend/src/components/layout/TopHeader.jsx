@@ -11,7 +11,7 @@ import TranslatedText from '../../components/TranslatedText'
 import NotificationDropdown from './NotificationDropdown'
 
 export default function TopHeader({ title, subtitle }) {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const { unreadCount } = useNotifications()
   const navigate = useNavigate()
   const location = useLocation()
@@ -49,10 +49,10 @@ export default function TopHeader({ title, subtitle }) {
     }
   }
 
-  const displayName = user?.businessName || user?.name || ''
+  const displayName = user?.businessName || user?.name || (isAdmin ? 'Admin' : '')
   const initials = displayName
     ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : user?.phone?.slice(-2) || '??'
+    : user?.phone?.slice(-2) || ''
 
   return (
     <header className="top-header">
@@ -125,10 +125,10 @@ export default function TopHeader({ title, subtitle }) {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <div className="avatar avatar-sm">{initials}</div>
+            <div className="avatar avatar-sm">{initials || <UserCircle size={18} />}</div>
             <div style={{ textAlign: 'left', lineHeight: 1.3 }}>
               <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                <TranslatedText>{user?.businessName || user?.name || getTranslatedText('User')}</TranslatedText>
+                <TranslatedText>{displayName || getTranslatedText('User')}</TranslatedText>
               </div>
               <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                 {getTranslatedText(user?.role || 'User')}

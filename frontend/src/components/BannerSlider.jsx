@@ -52,41 +52,23 @@ export default function BannerSlider({ banners, getTranslatedText }) {
   if (!banners || banners.length === 0) return null
 
   const banner = banners[currentIndex]
+  const link = banner?.link?.trim()
+  const hasLink = Boolean(link && link !== '#')
 
   const handleBannerClick = (e) => {
     if (isSwiping) return
     e?.stopPropagation()
 
-    const link = banner.link?.trim()
-    if (link && link !== '#') {
-      if (link.startsWith('http://') || link.startsWith('https://')) {
-        window.open(link, '_blank', 'noopener,noreferrer')
-      } else if (link.startsWith('/')) {
-        navigate(link)
-      } else {
-        navigate('/' + link)
-      }
-      return
+    if (!hasLink) {
+      return // Do nothing if banner has no link
     }
 
-    // Smart fallback if link is not explicitly configured
-    const lowerTitle = (banner.title || '').toLowerCase()
-    const lowerSub = (banner.subtitle || '').toLowerCase()
-
-    if (lowerTitle.includes('insurance') || lowerSub.includes('insurance')) {
-      navigate('/insurance')
-    } else if (lowerTitle.includes('trip') || lowerSub.includes('trip')) {
-      navigate('/transport/trips')
-    } else if (lowerTitle.includes('vehicle') || lowerSub.includes('vehicle')) {
-      navigate('/transport/vehicles')
-    } else if (lowerTitle.includes('bill') || lowerSub.includes('bill')) {
-      navigate('/bills/create')
-    } else if (lowerSub.includes('transbilling.in') || lowerSub.includes('transbiling.in')) {
-      window.open('https://www.transbilling.in', '_blank', 'noopener,noreferrer')
-    } else if (lowerTitle.includes('ad') || lowerSub.includes('ad')) {
-      navigate('/support')
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+      window.open(link, '_blank', 'noopener,noreferrer')
+    } else if (link.startsWith('/')) {
+      navigate(link)
     } else {
-      navigate('/insurance')
+      navigate('/' + link)
     }
   }
 
@@ -100,7 +82,7 @@ export default function BannerSlider({ banners, getTranslatedText }) {
         className="animate-fadeIn"
         style={{ 
           background: '#FFFFFF', borderRadius: 28, padding: '28px 32px', color: '#0F172A',
-          position: 'relative', overflow: 'hidden', cursor: 'pointer',
+          position: 'relative', overflow: 'hidden', cursor: hasLink ? 'pointer' : 'default',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           minHeight: 180, display: 'flex', alignItems: 'center', border: '1px solid #F1F5F9'
         }}
@@ -133,40 +115,42 @@ export default function BannerSlider({ banners, getTranslatedText }) {
             <TranslatedText>{banner.subtitle}</TranslatedText>
           </p>
 
-          {/* Clickable Get Started Button */}
-          <div style={{ marginTop: 16 }}>
-            <button
-              type="button"
-              onClick={handleBannerClick}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#FFFFFF',
-                color: '#0F172A',
-                border: 'none',
-                padding: '8px 18px',
-                borderRadius: 100,
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                outline: 'none',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)'
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.35)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.25)'
-              }}
-            >
-              <span>{getTranslatedText ? getTranslatedText(banner.buttonText || 'Get Started') : (banner.buttonText || 'Get Started')}</span>
-              <ArrowRight size={15} color="#0F172A" />
-            </button>
-          </div>
+          {/* Clickable Action Button (only if link is configured) */}
+          {hasLink && (
+            <div style={{ marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleBannerClick}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: 100,
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  outline: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.35)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.25)'
+                }}
+              >
+                <span>{getTranslatedText ? getTranslatedText(banner.buttonText || 'Get Started') : (banner.buttonText || 'Get Started')}</span>
+                <ArrowRight size={15} color="#0F172A" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
