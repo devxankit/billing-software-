@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Wrench, User, MapPin, Phone, Loader2, ArrowRight, FileText, Image, Files, Building2, Check, Info, Shield, CreditCard, Truck, PenTool } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import logo from '../../assets/trans-logo.png'
+import SetupHeader from '../../components/SetupHeader'
 import { uploadSingleFile } from '../../api/uploadApi'
 import { PERSON_NAME_PATTERN, stripNonPersonName } from '../../utils/nameValidation'
 import { usePageTranslation } from '../../hooks/usePageTranslation'
@@ -233,35 +233,11 @@ export default function GarageRegistration() {
 
   return (
     <div className="animate-fadeIn" style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 24 }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: 24, background: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.08)', border: '1.5px solid #F1F5F9'
-        }}>
-          <img src={logo} alt="Logo" style={{ width: '75%', height: '75%', objectFit: 'contain' }} />
-        </div>
-        <h2 style={{ 
-          fontSize: '1.5rem', fontWeight: 950, color: '#0F172A', letterSpacing: '-0.04em', marginBottom: 4,
-          background: 'linear-gradient(to right, #0F172A, #4C1D95)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
-        }}>
-          {t('Setup Your Garage')}
-        </h2>
-        
-        {/* Progress Dots */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 }}>
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 1 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 2 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-          <div style={{ height: 5, width: 24, borderRadius: 10, background: step >= 3 ? '#7C3AED' : '#E2E8F0', transition: 'all 0.3s' }} />
-        </div>
-        
-        <p style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginTop: 10 }}>
-           {step === 1 && t('Basic workshop information')}
-           {step === 2 && t('KYC & Bank details')}
-           {step === 3 && t('Upload required documents')}
-        </p>
-      </div>
+      <SetupHeader
+        title={t('Setup Your Garage')}
+        step={step}
+        subtitle={step === 1 ? t('Basic workshop information') : step === 2 ? t('KYC & Bank details') : t('Upload required documents')}
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} style={{ 
         background: 'white', padding: '24px 20px', borderRadius: 28, 

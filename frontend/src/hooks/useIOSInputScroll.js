@@ -28,6 +28,14 @@ export const useIOSInputScroll = () => {
       document.body.removeAttribute('data-keyboard-open');
     };
 
+    // On phones, centre the field so it sits clear of the keyboard and any fixed header
+    const scrollToField = (target) => {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: window.innerWidth <= 768 ? 'center' : 'nearest',
+      });
+    };
+
     const handleFocus = (e) => {
       const target = e.target;
       if (isInputElement(target)) {
@@ -37,12 +45,7 @@ export const useIOSInputScroll = () => {
         // Scroll INPUT and TEXTAREA smoothly into view
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
           timerRef.current = setTimeout(() => {
-            if (document.activeElement === target) {
-              target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-              });
-            }
+            if (document.activeElement === target) scrollToField(target);
           }, 300);
         }
       }
@@ -69,6 +72,9 @@ export const useIOSInputScroll = () => {
         const heightDiff = window.innerHeight - window.visualViewport.height;
         if (heightDiff > 150) {
           markKeyboardOpen();
+          // The keyboard finished opening after the focus scroll: bring the field up again
+          const activeEl = document.activeElement;
+          if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) scrollToField(activeEl);
         } else if (!isInputElement(document.activeElement)) {
           markKeyboardClosed();
         }

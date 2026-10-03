@@ -1,6 +1,8 @@
 import React from 'react'
 import { Bell, Shield, Info, AlertCircle, CheckCircle, Trash2, Clock } from 'lucide-react'
 import { useNotifications } from '../../context/NotificationContext'
+import { usePageTranslation } from '../../hooks/usePageTranslation'
+import TranslatedText from '../../components/TranslatedText'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -8,6 +10,10 @@ dayjs.extend(relativeTime)
 
 export default function NotificationList() {
   const { notifications, markRead, removeNotification, loading } = useNotifications()
+  const { getTranslatedText } = usePageTranslation([
+    'Notifications', 'Updates about your business activity', 'Mark all as read',
+    'Loading notifications...', 'All caught up!', 'No new notifications right now.'
+  ])
   const accentColor = '#7C3AED'
 
   const getIcon = (type) => {
@@ -24,8 +30,8 @@ export default function NotificationList() {
     <div className="animate-fadeIn page-wrapper" style={{ maxWidth: 600, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-           <h2 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0F0D2E', margin: 0 }}>Notifications</h2>
-           <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>Updates about your business activity</p>
+           <h2 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0F0D2E', margin: 0 }}>{getTranslatedText('Notifications')}</h2>
+           <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: 0 }}>{getTranslatedText('Updates about your business activity')}</p>
         </div>
         <button 
           className="btn btn-ghost" 
@@ -33,14 +39,14 @@ export default function NotificationList() {
           style={{ fontWeight: 700, borderRadius: 12, padding: '8px 16px', fontSize: '0.8rem' }}
           disabled={notifications.length === 0}
         >
-          Mark all as read
+          {getTranslatedText('Mark all as read')}
         </button>
       </div>
 
       <div style={{ background: 'white', borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #F1F5F9', overflow: 'hidden' }}>
         {loading && (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
-            Loading notifications...
+            {getTranslatedText('Loading notifications...')}
           </div>
         )}
 
@@ -49,8 +55,8 @@ export default function NotificationList() {
             <div style={{ width: 64, height: 64, borderRadius: 20, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <Bell size={32} color="#CBD5E1" />
             </div>
-            <h3 style={{ fontWeight: 800, color: '#0F0D2E', marginBottom: 6 }}>All caught up!</h3>
-            <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0 }}>No new notifications right now.</p>
+            <h3 style={{ fontWeight: 800, color: '#0F0D2E', marginBottom: 6 }}>{getTranslatedText('All caught up!')}</h3>
+            <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0 }}>{getTranslatedText('No new notifications right now.')}</p>
           </div>
         )}
 
@@ -77,12 +83,12 @@ export default function NotificationList() {
 
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
-                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#0F0D2E' }}>{n.title}</h4>
+                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 800, color: '#0F0D2E' }}><TranslatedText>{n.title}</TranslatedText></h4>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#94A3B8', fontSize: '0.65rem', fontWeight: 600 }}>
                     <Clock size={10} /> {dayjs(n.createdAt).fromNow()}
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#475569', lineHeight: 1.4 }}>{n.body}</p>
+                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#475569', lineHeight: 1.4 }}><TranslatedText>{n.body}</TranslatedText></p>
               </div>
 
               <button 

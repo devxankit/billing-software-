@@ -58,7 +58,8 @@ async function processQueue() {
   isProcessing = false;
 }
 
-export async function translateText(text, targetLang, sourceLang = "en") {
+// `background` requests (the all-pages preload) wait behind anything a visible page asks for
+export async function translateText(text, targetLang, sourceLang = "en", background = false) {
   if (!text || String(text).trim() === "") return text;
   if (targetLang === sourceLang) return text;
 
@@ -69,14 +70,17 @@ export async function translateText(text, targetLang, sourceLang = "en") {
   if (cached) return cached;
 
   return new Promise((resolve) => {
-    queue.push({ text, targetLang, sourceLang, resolve });
+    const item = { text, targetLang, sourceLang, resolve, background };
+    const firstBackground = background ? -1 : queue.findIndex(q => q.background);
+    if (firstBackground === -1) queue.push(item);
+    else queue.splice(firstBackground, 0, item);
     processQueue();
   });
 }
 
-export async function translateBatch(texts, targetLang, sourceLang = "en") {
+export async function translateBatch(texts, targetLang, sourceLang = "en", background = false) {
   if (!Array.isArray(texts)) return texts;
-  return Promise.all(texts.map(t => translateText(t, targetLang, sourceLang)));
+  return Promise.all(texts.map(t => translateText(t, targetLang, sourceLang, background)));
 }
 
 export async function translateObject(obj, targetLang, sourceLang = "en", keysToTranslate = []) {

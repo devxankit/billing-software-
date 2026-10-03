@@ -15,6 +15,25 @@ import dayjs from 'dayjs'
 // Show a stored 0 as an empty field so a typed number replaces it instead of appending to "0"
 const blankZero = (v) => (parseFloat(v) ? String(v) : '')
 
+const round2 = (n) => Math.round(n * 100) / 100
+const rowTotal = (it) => (parseFloat(it.amount) || 0) + (parseFloat(it.extraAmount) || 0) + (parseFloat(it.haltAmount) || 0) + (parseFloat(it.returnAmount) || 0)
+const itemGst = (it) => round2(rowTotal(it) * (parseFloat(it.gstPercent) || 0) / 100)
+
+// Bills made from trips keep GST on each item and leave the bill-level % at 0.
+// Returns the single % to show in the GST dropdown, or 'mixed' when the items differ.
+function billGstPercent(bill) {
+  const own = parseFloat(bill?.gstPercent) || 0
+  const rates = [...new Set((bill?.items || []).filter(it => rowTotal(it) > 0).map(it => parseFloat(it.gstPercent) || 0))]
+  if (rates.every(r => r === 0)) return String(own)
+  return rates.length === 1 ? String(rates[0]) : 'mixed'
+}
+
+// GST is always worked out per item in this form, so every item carries its own %
+function itemGstPercent(it, bill) {
+  const billPct = billGstPercent(bill)
+  return String(parseFloat(it.gstPercent) || (billPct === 'mixed' ? 0 : parseFloat(billPct)) || 0)
+}
+
 function Field({ label, error, children, required, style }) {
   return (
     <div className="form-group" style={style}>
@@ -95,13 +114,13 @@ export default function TransportBill({ initialData }) {
         haltAmount: blankZero(it.haltAmount),
         extraAmount: blankZero(it.extraAmount),
         returnAmount: blankZero(it.returnAmount),
-        gstPercent: it.gstPercent?.toString() || '0',
+        gstPercent: itemGstPercent(it, initialData),
         gstAmount: it.gstAmount?.toString() || '0'
       })) || [
         { date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }
       ],
       extraCharges: initialData?.extraCharges?.toString() || '0',
-      gstPercent: initialData?.gstPercent?.toString() || '0',
+      gstPercent: billGstPercent(initialData),
       gstType: initialData?.gstType || 'CGST+SGST',
       notes: initialData?.notes || 'Grateful for Moving What Matters to You!',
     }
@@ -134,11 +153,11 @@ export default function TransportBill({ initialData }) {
             haltAmount: blankZero(it.haltAmount),
             extraAmount: blankZero(it.extraAmount),
             returnAmount: blankZero(it.returnAmount),
-            gstPercent: it.gstPercent?.toString() || '0',
+            gstPercent: itemGstPercent(it, data),
             gstAmount: it.gstAmount?.toString() || '0'
           })) || [],
           extraCharges: data.extraCharges?.toString() || '0',
-          gstPercent: data.gstPercent?.toString() || '0',
+          gstPercent: billGstPercent(data),
           gstType: data.gstType || 'CGST+SGST',
           notes: data.notes || '',
         })
@@ -172,11 +191,11 @@ export default function TransportBill({ initialData }) {
           haltAmount: blankZero(it.haltAmount),
           extraAmount: blankZero(it.extraAmount),
           returnAmount: blankZero(it.returnAmount),
-          gstPercent: it.gstPercent?.toString() || '0',
+          gstPercent: itemGstPercent(it, initialData),
           gstAmount: it.gstAmount?.toString() || '0'
         })) || [{ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' }],
         extraCharges: initialData.extraCharges?.toString() || '0',
-        gstPercent: initialData.gstPercent?.toString() || '0',
+        gstPercent: billGstPercent(initialData),
         gstType: initialData.gstType || 'CGST+SGST',
         paymentMode: initialData.paymentMode || 'topay',
         notes: initialData.notes || 'Grateful for Moving What Matters to You!',
@@ -213,18 +232,28 @@ export default function TransportBill({ initialData }) {
     }
   }, [partyId, parties, setValue, initialData])
 
-  const itemsTotal = (watchedItems || []).reduce((sum, item) => {
-    return sum + (parseFloat(item.amount) || 0) + (parseFloat(item.extraAmount) || 0) + (parseFloat(item.haltAmount) || 0) + (parseFloat(item.returnAmount) || 0)
-  }, 0)
-
-  const itemsGstTotal = (watchedItems || []).reduce((sum, item) => {
-    return sum + (parseFloat(item.gstAmount) || 0)
-  }, 0)
-  
-  const subtotal = itemsTotal
-  const calculatedGst = subtotal * (parseFloat(gstPercent) || 0) / 100
-  const finalGstAmount = itemsGstTotal || calculatedGst
+  const subtotal = (watchedItems || []).reduce((sum, item) => sum + rowTotal(item), 0)
+  const finalGstAmount = round2((watchedItems || []).reduce((sum, item) => sum + itemGst(item), 0))
   const grandTotal = subtotal + finalGstAmount
+
+  // The GST dropdown is one rate for the whole bill: push it onto every item
+  const applyGstPercent = (pct) => {
+    (watchedItems || []).forEach((_, i) => setValue(`items.${i}.gstPercent`, pct))
+  }
+  const newItemGstPercent = gstPercent === 'mixed' ? '0' : (gstPercent || '0')
+  const gstOptions = [...new Set(['0', '5', '12', '18', '28', ...(gstPercent && gstPercent !== 'mixed' ? [String(gstPercent)] : [])])]
+    .sort((a, b) => parseFloat(a) - parseFloat(b))
+
+  // Switching "Include Hold" off removes the hold charges, not just the fields
+  const toggleHalt = () => {
+    if (showHalt) {
+      (watchedItems || []).forEach((_, i) => {
+        setValue(`items.${i}.haltDays`, '')
+        setValue(`items.${i}.haltAmount`, '')
+      })
+    }
+    setShowHalt(!showHalt)
+  }
 
   const onSubmit = async (data, statusArg = 'unpaid') => {
     if (isSubmitting.current) return;
@@ -259,7 +288,7 @@ export default function TransportBill({ initialData }) {
           extraAmount: parseFloat(it.extraAmount) || 0,
           returnAmount:parseFloat(it.returnAmount) || 0,
           gstPercent:  parseFloat(it.gstPercent) || 0,
-          gstAmount:   parseFloat(it.gstAmount) || 0,
+          gstAmount:   itemGst(it),
           amount:      parseFloat(it.amount) || 0,
           tripIds:     it.tripIds || [],
         })),
@@ -492,7 +521,7 @@ export default function TransportBill({ initialData }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 8px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B' }}>{getTranslatedText('Invoice Items')}</span>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <div onClick={() => setShowHalt(!showHalt)} style={{ width: 34, height: 20, borderRadius: 10, background: showHalt ? '#7C3AED' : '#E2E8F0', position: 'relative', transition: '0.3s' }}>
+              <div onClick={toggleHalt} style={{ width: 34, height: 20, borderRadius: 10, background: showHalt ? '#7C3AED' : '#E2E8F0', position: 'relative', transition: '0.3s' }}>
                 <div style={{ width: 14, height: 14, borderRadius: 7, background: 'white', position: 'absolute', top: 3, left: showHalt ? 17 : 3, transition: '0.3s' }} />
               </div>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: showHalt ? '#7C3AED' : '#64748B' }}>{getTranslatedText('Include Hold')}</span>
@@ -586,7 +615,7 @@ export default function TransportBill({ initialData }) {
               </div>
             ))}
           </div>
-          <button type="button" onClick={() => append({ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: '0', gstAmount: '0' })} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed #E5E7EB', background: '#F9FAFB', fontWeight: 700, fontSize: '0.875rem', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button type="button" onClick={() => append({ date: dayjs().format('YYYY-MM-DD'), companyFrom: '', companyTo: '', chalanNo: '', amount: '', tempoNo: '', haltDays: '', haltAmount: '', extraAmount: '', returnAmount: '', gstPercent: newItemGstPercent, gstAmount: '0' })} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '2px dashed #E5E7EB', background: '#F9FAFB', fontWeight: 700, fontSize: '0.875rem', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <Plus size={18} /> {getTranslatedText('Add Another Trip')}
           </button>
         </SectionCard>
@@ -595,7 +624,10 @@ export default function TransportBill({ initialData }) {
         <SectionCard icon={FileText} iconBg="#DCFCE7" iconColor="#16A34A" title={getTranslatedText('Taxes & Totals')}>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <Field label={getTranslatedText('GST %')} style={{ marginBottom: 0 }}>
-              <select {...register('gstPercent')} className="form-input">{['0','5','12','18'].map(g => <option key={g} value={g}>{g}%</option>)}</select>
+              <select {...register('gstPercent', { onChange: e => applyGstPercent(e.target.value) })} className="form-input">
+                {gstPercent === 'mixed' && <option value="mixed" disabled>Mixed</option>}
+                {gstOptions.map(g => <option key={g} value={g}>{g}%</option>)}
+              </select>
             </Field>
             <Field label={getTranslatedText('GST Type')} style={{ marginBottom: 0 }}>
               <select {...register('gstType')} className="form-input" style={{ fontSize: '0.8rem', paddingLeft: 8, paddingRight: 24 }}>{['CGST+SGST','IGST'].map(g => <option key={g}>{g}</option>)}</select>
