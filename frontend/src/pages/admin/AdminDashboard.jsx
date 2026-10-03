@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, FileText, Banknote, TrendingUp,
+  Users, User, FileText, Banknote, TrendingUp,
   Truck, Wrench, MapPin, CreditCard,
   Building2, ChevronRight, Globe, Activity,
   AlertCircle, CheckCircle, Clock, IndianRupee
@@ -82,12 +82,21 @@ export default function AdminDashboard() {
       link: '/admin/billing'
     },
     {
-      label: t('total_revenue'),
+      label: 'Platform Revenue',
+      value: `₹${stats.platformRevenue.toLocaleString('en-IN')}`,
+      icon: CreditCard,
+      color: '#7C3AED',
+      bg: '#EDE9FE',
+      sub: `from subscriptions · ₹${stats.platformPending.toLocaleString('en-IN')} pending`,
+      link: '/admin/software-sales'
+    },
+    {
+      label: isTransport ? 'Transporters Billing' : 'Garages Billing',
       value: `₹${stats.totalRevenue.toLocaleString('en-IN')}`,
       icon: IndianRupee,
       color: '#059669',
       bg: '#D1FAE5',
-      sub: `₹${stats.pendingRevenue.toLocaleString('en-IN')} pending`,
+      sub: `collected by vendors · ₹${stats.pendingRevenue.toLocaleString('en-IN')} pending`,
       link: '/admin/billing'
     },
   ]
@@ -168,7 +177,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, marginBottom: 32 }}>
+      <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20, marginBottom: 32 }}>
         {kpiCards.map((kpi, i) => (
           <div 
             key={i} 
@@ -176,6 +185,7 @@ export default function AdminDashboard() {
             onClick={() => kpi.link && navigate(kpi.link)}
             style={{ 
               padding: '22px 24px', 
+              minWidth: 0,
               borderTop: `3px solid ${kpi.color}`,
               cursor: 'pointer',
               transition: 'transform 0.2s, box-shadow 0.2s',
@@ -189,7 +199,7 @@ export default function AdminDashboard() {
                 <kpi.icon size={18} color={kpi.color} />
               </div>
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{kpi.value}</div>
+            <div style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2rem)', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{kpi.value}</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 6, fontWeight: 600 }}>{kpi.sub}</div>
           </div>
         ))}
@@ -283,7 +293,10 @@ export default function AdminDashboard() {
                 <Users size={32} color="var(--text-muted)" strokeWidth={1.5} style={{ margin: '0 auto 12px' }} />
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No users yet. Add one from User Management.</p>
               </div>
-            ) : recentUsers.map(u => (
+            ) : recentUsers.map(u => {
+              const displayName = u.name || u.businessName || ''
+              const status = u.status || (u.isDeleted ? 'Deleted' : (u.setupComplete ? 'Active' : 'Inactive'))
+              return (
               <div key={u.id} style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '12px 24px',
                 borderBottom: '1px solid var(--border)', transition: 'background 0.2s'
@@ -294,22 +307,29 @@ export default function AdminDashboard() {
                 <div style={{
                   width: 38, height: 38, borderRadius: 10, background: `${accentColor}20`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 900, color: accentColor, fontSize: '0.9rem'
+                  fontWeight: 900, color: accentColor, fontSize: '0.9rem', overflow: 'hidden', flexShrink: 0
                 }}>
-                  {(u.name || '?')[0].toUpperCase()}
+                  {u.logoUrl ? (
+                    <img src={u.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : displayName ? (
+                    displayName[0].toUpperCase()
+                  ) : (
+                    <User size={18} color={accentColor} />
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: '0.875rem' }}>{u.name}</p>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: '0.875rem' }}>{displayName || 'Unnamed User'}</p>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{u.phone || u.email || '—'}</p>
                 </div>
                 <span style={{
                   fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
                   padding: '3px 8px', borderRadius: 99,
-                  background: u.status === 'Active' ? 'var(--success-light)' : '#FEF3C7',
-                  color: u.status === 'Active' ? 'var(--success)' : '#D97706'
-                }}>{u.status}</span>
+                  background: status === 'Active' ? 'var(--success-light)' : '#FEF3C7',
+                  color: status === 'Active' ? 'var(--success)' : '#D97706'
+                }}>{status}</span>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -328,7 +348,7 @@ export default function AdminDashboard() {
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No invoices records found in history.</p>
               </div>
             ) : recentInvoices.map(inv => (
-              <div key={inv.id} style={{
+              <div key={inv._id || inv.id} style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '12px 24px',
                 borderBottom: '1px solid var(--border)', transition: 'background 0.2s'
               }}

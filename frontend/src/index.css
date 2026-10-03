@@ -1478,3 +1478,87 @@ body.keyboard-open .auth-right {
     padding-bottom: 320px !important;
   }
 }
+
+/* ═══════════════════════════════════════
+   SIGNUP SETUP HEADER (SetupHeader.jsx)
+   Fixed on mobile so only the form scrolls under it
+   ═══════════════════════════════════════ */
+.setup-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.setup-header-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  border: 1.5px solid #F1F5F9;
+}
+.setup-header-logo img { width: 75%; height: 75%; object-fit: contain; }
+.setup-header-title {
+  font-size: 1.5rem;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  margin: 0 0 4px;
+  background: linear-gradient(to right, #0F172A, #4C1D95);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.setup-header-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.setup-header-dots span {
+  height: 5px;
+  width: 24px;
+  border-radius: 10px;
+  background: #E2E8F0;
+  transition: all 0.3s;
+}
+.setup-header-dots span.done { background: #7C3AED; }
+.setup-header-sub {
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+.setup-header-spacer { display: none; }
+
+@media (max-width: 768px) {
+  .setup-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 400;
+    margin: 0;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 0;
+    background: var(--bg);
+  }
+  .setup-header-card {
+    background: var(--surface);
+    border-radius: 22px;
+    padding: 12px 16px 14px;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+  }
+  .setup-header-logo {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+    margin-bottom: 8px;
+  }
+  .setup-header-title { font-size: 1.2rem; }
+  .setup-header-dots { margin-top: 8px; }
+  .setup-header-sub { margin-top: 6px; }
+  /* The page already has 60px of top padding; the spacer covers the rest of the header */
+  .setup-header-spacer { display: block; margin-top: -44px; }
+}

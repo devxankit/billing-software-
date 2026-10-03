@@ -763,7 +763,7 @@ export default function TripManagement() {
                 }} 
                 placeholder={`${getTranslatedText('Challan No. / Bill No.')} (e.g. 123, 456)`} 
                 className="form-input" 
-                style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}
+                style={{ textTransform: 'uppercase' }}
               />
               <div className="delivery-charges-grid">
                 <div className="form-group" style={{ marginBottom: 0 }}>
