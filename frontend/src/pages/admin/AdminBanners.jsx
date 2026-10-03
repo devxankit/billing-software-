@@ -6,10 +6,7 @@ import {
 import { apiClient } from '../../api/apiClient'
 
 export default function AdminBanners() {
-  const [banners, setBanners] = useState([
-    { id: '1', title: 'Insurance Service', subtitle: 'Secure your fleet with 20+ insurers starting at ₹2094/yr', link: '/insurance', badge: 'NEW', active: true },
-    { id: '2', title: 'GPS Tracking', subtitle: 'Real-time tracking for your entire fleet with live alerts', link: '/gps', badge: 'POPULAR', active: false },
-  ])
+  const [banners, setBanners] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(null) // ID of banner being uploaded
@@ -23,7 +20,7 @@ export default function AdminBanners() {
   const fetchBanners = async () => {
     try {
       const res = await apiClient.get('/system/banners')
-      if (res.data.success && res.data.banners?.length > 0) {
+      if (res.data.success && Array.isArray(res.data.banners)) {
         setBanners(res.data.banners)
       }
     } catch (e) {
@@ -34,6 +31,10 @@ export default function AdminBanners() {
   }
 
   const handleSave = async () => {
+    if (banners.some(b => !b.title?.trim())) {
+      alert('Please enter a title for every banner')
+      return
+    }
     setSaving(true)
     try {
       await apiClient.post('/system/banners', { banners })
@@ -67,9 +68,9 @@ export default function AdminBanners() {
   const addBanner = () => {
     const newBanner = {
       id: Date.now().toString(),
-      title: 'New Banner',
-      subtitle: 'Banner description here',
-      link: '#',
+      title: '',
+      subtitle: '',
+      link: '',
       badge: '',
       targetApp: 'both',
       active: true
@@ -192,12 +193,12 @@ export default function AdminBanners() {
                   </select>
                 </div>
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Action Link / Target URL (for Get Started button)</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Action Link / Target URL (Optional - leave empty for no link)</label>
                   <input 
                     className="form-input" 
                     value={banner.link || ''} 
                     onChange={e => updateBanner(banner.id, 'link', e.target.value)} 
-                    placeholder="e.g., /insurance, /transport/trips, or https://example.com"
+                    placeholder="Leave empty for no link, or enter /transport/trips, https://example.com"
                   />
                 </div>
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>

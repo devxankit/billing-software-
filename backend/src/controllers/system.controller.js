@@ -11,7 +11,13 @@ async function getBanners(req, res, next) {
 
 async function updateBanners(req, res, next) {
   try {
-    const { banners } = req.body;
+    let { banners } = req.body;
+    if (Array.isArray(banners)) {
+      banners = banners.map(b => ({
+        ...b,
+        link: (!b.link || b.link.trim() === '#') ? '' : b.link.trim()
+      }));
+    }
     const setting = await SystemSetting.findOneAndUpdate(
       { key: 'global_banners' },
       { value: banners },
